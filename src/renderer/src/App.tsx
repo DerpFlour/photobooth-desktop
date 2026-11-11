@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
+import { IdleWatcher } from './components/IdleWatcher'
 import { Stage } from './components/Stage'
 import { NavProvider, useNav } from './state/nav'
 import { SessionProvider } from './state/session'
 import { SettingsProvider } from './state/settings'
+import { Admin } from './screens/Admin'
 import { CameraSetup } from './screens/CameraSetup'
 import { Capture } from './screens/Capture'
 import { Edit } from './screens/Edit'
@@ -41,6 +43,8 @@ function Router(): React.JSX.Element | null {
       return <Result />
     case 'cameraSetup':
       return <CameraSetup />
+    case 'admin':
+      return <Admin initiallyUnlocked={screen.unlocked ?? false} />
     default:
       return null
   }
@@ -53,6 +57,7 @@ export default function App(): React.JSX.Element {
         <NavProvider>
           <SessionProvider>
             <Router />
+            <IdleWatcher />
           </SessionProvider>
         </NavProvider>
       </SettingsProvider>

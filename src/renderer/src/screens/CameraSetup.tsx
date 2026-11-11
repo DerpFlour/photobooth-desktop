@@ -28,7 +28,7 @@ export function CameraSetup(): React.JSX.Element {
 
   const save = async (): Promise<void> => {
     await update({ cameraDeviceId: deviceId, cameraWidth: w, cameraHeight: h })
-    nav.go({ name: 'home' })
+    nav.go({ name: 'admin' })
   }
 
   return (
@@ -87,7 +87,7 @@ export function CameraSetup(): React.JSX.Element {
       </div>
 
       <div className="footer">
-        <Button label="Cancel" variant="secondary" onClick={() => nav.go({ name: 'home' })} />
+        <Button label="Cancel" variant="secondary" onClick={() => nav.go({ name: 'admin', unlocked: true })} />
         <Button label="Save" onClick={save} />
       </div>
     </div>

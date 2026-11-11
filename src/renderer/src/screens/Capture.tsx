@@ -1,3 +1,4 @@
+import { setIdleBlocked } from '../state/idle'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/Button'
 import { getLayoutById } from '../config/layouts'
@@ -21,6 +22,12 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
   const [count, setCount] = useState<number | null>(null)
   const [shot, setShot] = useState<string | null>(null)
   const [flashKey, setFlashKey] = useState(0)
+  
+  // Don't auto-reset to the home screen while photos are being taken.
+  useEffect(() => {
+    setIdleBlocked(running)
+    return () => setIdleBlocked(false)
+  }, [running])
 
   useEffect(() => {
     cancelled.current = false
@@ -101,7 +108,7 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
           <p>{state.message}</p>
           <div className="cap-buttons" style={{ marginTop: 24 }}>
             <Button label="Back" variant="secondary" onClick={cancel} />
-            <Button label="Camera setup" onClick={() => nav.go({ name: 'cameraSetup' })} />
+            <Button label="Operator setup" onClick={() => nav.go({ name: 'admin' })} />
           </div>
         </div>
       </div>

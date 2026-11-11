@@ -10,6 +10,7 @@ export type Screen =
   | { name: 'edit' }
   | { name: 'result' }
   | { name: 'cameraSetup' }
+  | { name: 'admin'; unlocked?: boolean } // unlocked = already entered the PIN
 
 type NavState = { screen: Screen; go: (screen: Screen) => void }
 const NavContext = createContext<NavState | null>(null)

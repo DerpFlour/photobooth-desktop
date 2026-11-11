@@ -28,10 +28,9 @@ export function Home(): React.JSX.Element {
     }
   }, [settings.showRecentOnHome, settings.homeGalleryCount])
 
-  // Press and hold the title for 2 seconds to open camera setup.
-  // (Part 2B moves this behind the admin PIN.)
+  // Press and hold the title for 2 seconds to open the admin (asks for the PIN).
   const holdStart = (): void => {
-    hold.current = window.setTimeout(() => nav.go({ name: 'cameraSetup' }), 2000)
+    hold.current = window.setTimeout(() => nav.go({ name: 'admin' }), 2000)
   }
   const holdEnd = (): void => {
     if (hold.current) window.clearTimeout(hold.current)
