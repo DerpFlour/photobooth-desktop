@@ -11,6 +11,7 @@ const api: PhotoboothApi = {
   listSessions: (limit) => ipcRenderer.invoke('sessions:list', limit),
   deleteSession: (id) => ipcRenderer.invoke('sessions:delete', id),
   deleteAllSessions: () => ipcRenderer.invoke('sessions:deleteAll'),
+  removeClip: (id) => ipcRenderer.invoke('sessions:removeClip', id),
   storageSummary: () => ipcRenderer.invoke('storage:summary'),
   pruneStorage: () => ipcRenderer.invoke('storage:prune'),
   ensureStorage: () => ipcRenderer.invoke('storage:ensure'),

@@ -320,3 +320,32 @@ button { font: inherit; cursor: pointer; border: none; }
 .idle-card { background: #fff; padding: 60px 110px; border-radius: 48px; text-align: center; }
 .idle-card h1 { margin: 0 0 12px; font-size: 96px; font-weight: 900; color: var(--primary-dark); }
 .idle-card p { margin: 6px 0; font-size: 44px; }
+
+/* ---------- full-window overlays (see Overlay.tsx) ---------- */
+.overlay { position: fixed; inset: 0; animation: fadeIn 0.25s ease; }
+.overlay-content {
+  position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+  transform-origin: center center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px;
+  pointer-events: none; /* clicks on empty space reach the dim layer behind */
+}
+.overlay-content > * { pointer-events: auto; }
+.overlay-content > img { max-width: 1500px; max-height: 760px; border-radius: 16px; }
+.detail-row { display: flex; gap: 40px; align-items: center; justify-content: center; }
+.detail-row img { max-height: 620px; max-width: 900px; border-radius: 16px; }
+
+/* ---------- behind-the-scenes clip ---------- */
+.rec {
+  position: absolute; top: 22px; left: 22px; display: flex; align-items: center; gap: 14px;
+  background: rgba(0, 0, 0, 0.6); color: #fff; padding: 12px 26px; border-radius: 999px;
+  font-size: 28px; font-weight: 700; pointer-events: none;
+}
+.rec i { width: 22px; height: 22px; border-radius: 50%; background: #ff3b3b; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+
+/* ---------- result: strip + animated clip side by side ---------- */
+.result-body { gap: 60px; }
+.result-figure { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.result-figure img { height: 800px; max-height: none; width: auto; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
+.result-figure span { font-size: 28px; font-weight: 700; color: var(--muted); }
+.result-info { max-width: 520px; }

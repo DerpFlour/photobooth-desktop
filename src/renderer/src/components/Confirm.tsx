@@ -1,4 +1,5 @@
 import { Button } from './Button'
+import { Overlay } from './Overlay'
 
 type Props = {
   title: string
@@ -12,7 +13,7 @@ type Props = {
 // An in-app "Are you sure?" box (big buttons, works with touch).
 export function Confirm({ title, message, yesLabel, danger, onYes, onNo }: Props): React.JSX.Element {
   return (
-    <div className="modal" style={{ zIndex: 80 }}>
+    <Overlay zIndex={1800}>
       <div className="confirm">
         <h2>{title}</h2>
         <p>{message}</p>
@@ -21,6 +22,6 @@ export function Confirm({ title, message, yesLabel, danger, onYes, onNo }: Props
           <Button label={yesLabel} onClick={onYes} style={danger ? { background: '#e53e3e' } : undefined} />
         </div>
       </div>
-    </div>
+    </Overlay>
   )
 }

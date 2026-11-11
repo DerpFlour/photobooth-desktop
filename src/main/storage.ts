@@ -1,5 +1,7 @@
 import { app } from 'electron'
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync
+} from 'node:fs'
 import { statfs } from 'node:fs/promises'
 import { dirname, join, normalize, sep } from 'node:path'
 import { getSettings } from './settings'
@@ -51,10 +53,21 @@ export function saveSession(input: SessionSaveInput): SessionRecord {
   writeFileSync(join(dir, stripName), Buffer.from(input.strip))
   writeFileSync(join(dir, 'thumb.jpg'), Buffer.from(input.thumb))
   let total = input.strip.byteLength + input.thumb.byteLength
+
+  const hasGif = !!input.gif && input.gif.byteLength > 0
+  if (hasGif && input.gif) {
+    writeFileSync(join(dir, 'clip.gif'), Buffer.from(input.gif))
+    total += input.gif.byteLength
+  }
   input.originals.forEach((photo, i) => {
     writeFileSync(join(dir, `photo-${i + 1}.jpg`), Buffer.from(photo))
     total += photo.byteLength
   })
+
+  // Make sure everything we are about to promise really is on disk.
+  for (const name of [stripName, 'thumb.jpg', ...(hasGif ? ['clip.gif'] : [])]) {
+    if (!existsSync(join(dir, name))) throw new Error(`Saving failed: ${name} was not written to disk.`)
+  }
 
   const record: SessionRecord = {
     id: input.id,
@@ -63,6 +76,7 @@ export function saveSession(input: SessionSaveInput): SessionRecord {
     templateId: input.templateId,
     stripPath: `sessions/${input.id}/${stripName}`,
     thumbPath: `sessions/${input.id}/thumb.jpg`,
+    gifPath: hasGif ? `sessions/${input.id}/clip.gif` : undefined,
     width: input.width,
     height: input.height,
     bytes: total,
@@ -78,6 +92,26 @@ export function saveSession(input: SessionSaveInput): SessionRecord {
 }
 
 export const listSessions = (limit: number): SessionRecord[] => records.slice(0, Math.max(0, limit))
+
+// Deletes just the behind-the-scenes clip from a saved session.
+export function removeClip(id: string): SessionRecord | null {
+  const record = records.find((r) => r.id === id)
+  if (!record || !record.gifPath) return record ?? null
+  let size = 0
+  const full = resolveSessionFile(record.gifPath)
+  try {
+    if (full) {
+      size = statSync(full).size
+      rmSync(full, { force: true })
+    }
+  } catch (e) {
+    console.warn('[storage] could not remove clip', e)
+  }
+  record.gifPath = undefined
+  record.bytes = Math.max(0, record.bytes - size)
+  persist()
+  return record
+}
 
 export function deleteSession(id: string): void {
   if (!ID_PATTERN.test(id)) return
@@ -150,11 +184,32 @@ export async function ensureStorage(): Promise<{ ok: boolean; freeMB: number }> 
   return { ok: free / MB >= s.minFreeSpaceMB, freeMB: free / MB }
 }
 
-// Startup repair: drop list entries whose picture is missing, and delete
-// session folders that aren't in the list (e.g. the app closed mid-save).
+// Startup repair:
+// - a session whose strip picture is gone is dropped from the list
+// - a missing thumbnail is replaced by the strip itself
+// - a missing clip is forgotten
+// - folders that aren't in the list (e.g. the app closed mid-save) are deleted
 export function reconcileStorage(): void {
-  records = records.filter((r) => existsSync(join(userRoot(), r.stripPath)))
+  const root = userRoot()
+  const has = (relative?: string): boolean => typeof relative === 'string' && existsSync(join(root, relative))
+
+  records = records.filter((r) => {
+    const keep = has(r.stripPath)
+    if (!keep) console.warn('[storage] removing session with a missing strip:', r.id)
+    return keep
+  })
+  for (const r of records) {
+    if (!has(r.thumbPath)) {
+      console.warn('[storage] thumbnail missing, using the strip instead:', r.id)
+      r.thumbPath = r.stripPath
+    }
+    if (r.gifPath && !has(r.gifPath)) {
+      console.warn('[storage] clip file missing, forgetting it:', r.id)
+      r.gifPath = undefined
+    }
+  }
   persist()
+
   const dir = sessionsDir()
   if (!existsSync(dir)) return
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

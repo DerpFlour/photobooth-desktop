@@ -1,35 +1,53 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/Button'
 import { fileUrl } from '../config/assets'
 import { getLayoutById } from '../config/layouts'
 import { getTemplateById } from '../config/templates'
 import { canvasToBlob, drawStrip, makeThumbnail } from '../render/drawStrip'
+import { renderClipGif } from '../render/gif'
 import { loadFrame, loadPhotos, loadStickers } from '../render/loaders'
 import { useNav } from '../state/nav'
 import { useSession } from '../state/session'
 import { useSettings } from '../state/settings'
 
 type State =
-  | { status: 'saving' }
+  | { status: 'saving'; step: string }
   | { status: 'done'; record: SessionRecord; ms: number }
   | { status: 'error'; message: string }
+
+const toBuffer = (bytes: Uint8Array): ArrayBuffer =>
+  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
 
 export function Result(): React.JSX.Element | null {
   const nav = useNav()
   const { settings } = useSettings()
-  const { sessionId, layoutId, templateId, photos, edit, resetSession } = useSession()
-  const [state, setState] = useState<State>({ status: 'saving' })
+  const { sessionId, layoutId, templateId, photos, edit, clipShots, resetSession } = useSession()
+  const [state, setState] = useState<State>({ status: 'saving', step: 'Rendering at full resolution' })
+  const [gifUrl, setGifUrl] = useState<string | null>(null) // the clip, shown beside the strip
+  const [clipNote, setClipNote] = useState('')
+  const urlRef = useRef<string | null>(null)
 
   const layout = getLayoutById(layoutId)
   const template = getTemplateById(templateId)
 
-  // Render at full print size and save, once, when the screen opens.
+  // Free the clip's memory when leaving the screen.
+  useEffect(
+    () => () => {
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+    },
+    []
+  )
+
+  // Render at full print size, build the clip, and save everything, once.
   useEffect(() => {
     if (!layout || !template || !sessionId) {
       nav.go({ name: 'home' })
       return
     }
     let alive = true
+    const step = (s: string): void => {
+      if (alive) setState({ status: 'saving', step: s })
+    }
     ;(async () => {
       const started = performance.now()
       let bitmaps: (ImageBitmap | null)[] = []
@@ -48,7 +66,6 @@ export function Result(): React.JSX.Element | null {
           layout, template, edit, assets,
           pixelWidth: Math.round(layout.output.width * settings.exportScale)
         })
-
         const isPng = settings.exportFormat === 'png'
         const strip = await canvasToBlob(canvas, isPng ? 'image/png' : 'image/jpeg', settings.exportQuality / 100)
         const thumb = await makeThumbnail(canvas)
@@ -56,6 +73,28 @@ export function Result(): React.JSX.Element | null {
           ? await Promise.all(photos.filter((p) => p !== null).map((p) => p.blob.arrayBuffer()))
           : []
 
+        // The animated strip. If it fails, the strip is still saved.
+        let gif: ArrayBuffer | undefined
+        if (settings.gifEnabled && Object.keys(clipShots).length > 0) {
+          try {
+            step('Creating your behind-the-scenes clip…')
+            const bytes = await renderClipGif({
+              layout, template, edit,
+              finalAssets: assets,
+              shots: clipShots,
+              fps: settings.gifFps,
+              width: settings.gifWidth,
+              holdMs: settings.gifHoldSeconds * 1000,
+              onProgress: (label, done, total) => step(`${label} ${done}/${total}`)
+            })
+            if (bytes) gif = toBuffer(bytes)
+          } catch (e) {
+            console.error('[clip] failed', e)
+            if (alive) setClipNote('The clip could not be created, but your photo strip is saved.')
+          }
+        }
+
+        step('Saving…')
         const record = await window.api.saveSession({
           id: sessionId,
           layoutId: layout.id,
@@ -66,8 +105,14 @@ export function Result(): React.JSX.Element | null {
           ext: isPng ? 'png' : 'jpg',
           strip: await strip.arrayBuffer(),
           thumb: await thumb.arrayBuffer(),
+          gif,
           originals
         })
+
+        if (gif && alive) {
+          urlRef.current = URL.createObjectURL(new Blob([gif], { type: 'image/gif' }))
+          setGifUrl(urlRef.current)
+        }
         if (alive) setState({ status: 'done', record, ms: Math.round(performance.now() - started) })
       } catch (e) {
         console.error('[save] failed', e)
@@ -89,7 +134,7 @@ export function Result(): React.JSX.Element | null {
       <div className="screen">
         <div className="center-msg">
           Creating your photo strip…
-          <p>Rendering at full resolution and saving</p>
+          <p>{state.step}</p>
         </div>
       </div>
     )
@@ -111,12 +156,23 @@ export function Result(): React.JSX.Element | null {
   return (
     <div className="screen">
       <div className="result-body">
-        <img
-          className="result-image"
-          src={fileUrl(record.stripPath, record.createdAt)}
-          style={{ aspectRatio: record.width / record.height }}
-          alt="Your photo strip"
-        />
+        <div className="result-figure">
+          <img
+            src={fileUrl(record.stripPath, record.createdAt)}
+            style={{ aspectRatio: record.width / record.height }}
+            alt="Your photo strip"
+          />
+          <span>Your strip</span>
+        </div>
+
+        {/* The clip appears automatically beside the strip */}
+        {gifUrl && (
+          <div className="result-figure">
+            <img src={gifUrl} alt="Behind-the-scenes clip" />
+            <span>Behind the scenes</span>
+          </div>
+        )}
+
         <div className="result-info">
           <h1 className="result-title">Your strip is ready ✨</h1>
           <p>
@@ -126,7 +182,8 @@ export function Result(): React.JSX.Element | null {
             {(record.bytes / 1024).toFixed(0)} KB saved · {state.ms} ms
           </p>
           <p className="saved">✓ Saved on this computer</p>
-          <p className="note">QR code, GIF and printing arrive in later phases.</p>
+          {clipNote && <p className="note">{clipNote}</p>}
+          <p className="note">QR code and printing arrive in later phases.</p>
         </div>
       </div>
 

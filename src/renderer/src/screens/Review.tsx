@@ -1,3 +1,4 @@
+import { Overlay } from '../components/Overlay'
 import { useEffect, useState } from 'react'
 import { Button } from '../components/Button'
 import { DraggablePhoto } from '../components/DraggablePhoto'
@@ -90,9 +91,9 @@ export function Review(): React.JSX.Element | null {
         <Button label="Edit & decorate →" onClick={() => nav.go({ name: 'edit' })} />
       </div>
 
-      {/* Enlarged photo + retake */}
+      {/* Enlarged photo + retake (covers the whole window) */}
       {enlarged && (
-        <div className="modal" onClick={() => setSelected(null)}>
+        <Overlay onClick={() => setSelected(null)}>
           <img src={enlarged.url} alt="" />
           <div className="modal-buttons" onClick={(e) => e.stopPropagation()}>
             <Button label="Close" variant="secondary" onClick={() => setSelected(null)} />
@@ -105,8 +106,9 @@ export function Review(): React.JSX.Element | null {
               }}
             />
           </div>
-        </div>
+        </Overlay>
       )}
     </div>
   )
 }
+      

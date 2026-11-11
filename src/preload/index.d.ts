@@ -12,6 +12,11 @@ declare global {
     cameraHeight: number
     mirrorPreview: boolean // live preview looks like a mirror (selfie style)
     mirrorPhotos: boolean // saved photos match the preview
+    // behind-the-scenes clip
+    gifEnabled: boolean
+    gifFps: number
+    gifWidth: number
+    gifHoldSeconds: number
     // export
     exportFormat: 'jpeg' | 'png'
     exportQuality: number
@@ -41,6 +46,7 @@ declare global {
     templateId: string
     stripPath: string
     thumbPath: string
+    gifPath?: string // the behind-the-scenes clip, if there is one
     width: number
     height: number
     bytes: number // total size of all this session's files
@@ -59,6 +65,7 @@ declare global {
     ext: 'jpg' | 'png'
     strip: ArrayBuffer
     thumb: ArrayBuffer
+    gif?: ArrayBuffer // the behind-the-scenes clip
     originals: ArrayBuffer[] // full-size photos (empty unless "keep originals" is on)
   }
 
@@ -80,6 +87,7 @@ declare global {
     listSessions(limit: number): Promise<SessionRecord[]>
     deleteSession(id: string): Promise<void>
     deleteAllSessions(): Promise<void>
+    removeClip(id: string): Promise<SessionRecord | null>
     storageSummary(): Promise<StorageSummary>
     pruneStorage(): Promise<number>
     ensureStorage(): Promise<{ ok: boolean; freeMB: number }>

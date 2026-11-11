@@ -1,3 +1,4 @@
+import { Overlay } from './Overlay'
 import { useEffect, useRef, useState } from 'react'
 import { isIdleBlocked } from '../state/idle'
 import { useNav } from '../state/nav'
@@ -64,8 +65,9 @@ export function IdleWatcher(): React.JSX.Element | null {
 
   if (secondsLeft === null) return null
   return (
-    <div
-      className="idle-overlay"
+    <Overlay
+      background="rgba(30, 10, 20, 0.65)"
+      zIndex={2000}
       onPointerDown={() => {
         lastTouch.current = Date.now()
         setSecondsLeft(null)
@@ -76,6 +78,6 @@ export function IdleWatcher(): React.JSX.Element | null {
         <p>Starting over in {secondsLeft}s</p>
         <p className="muted">Tap anywhere to keep going</p>
       </div>
-    </div>
+    </Overlay>
   )
 }

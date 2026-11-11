@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '../components/Button'
 import { Confirm } from '../components/Confirm'
+import { Overlay } from '../components/Overlay'
 import { PinPad } from '../components/PinPad'
 import { ChoiceRow, NumberRow, ToggleRow } from '../components/SettingRows'
 import { fileUrl } from '../config/assets'
@@ -234,6 +235,12 @@ function AdminPanel(): React.JSX.Element {
             <ToggleRow label="Live preview is mirrored" hint="Like a mirror / selfie camera" value={settings.mirrorPreview} onChange={(v) => update({ mirrorPreview: v })} />
             <ToggleRow label="Saved photos are mirrored" hint="On = photos look exactly like the preview" value={settings.mirrorPhotos} onChange={(v) => update({ mirrorPhotos: v })} />
 
+            <h2 className="group-title">Behind-the-scenes clip</h2>
+            <ToggleRow label="Record the animated strip clip" hint="Automatic for every guest. A red REC badge shows while it records" value={settings.gifEnabled} onChange={(v) => update({ gifEnabled: v })} />
+            <NumberRow label="Smoothness" hint="Frames per second. Higher = smoother but a bigger file" value={settings.gifFps} min={5} max={15} step={1} unit=" fps" onChange={(v) => update({ gifFps: v })} />
+            <NumberRow label="Clip size (width)" hint="Smaller files load faster on guests' phones" value={settings.gifWidth} min={240} max={480} step={60} unit=" px" onChange={(v) => update({ gifWidth: v })} />
+            <NumberRow label="Pause on the finished strip" hint="Shown at the end of each loop" value={settings.gifHoldSeconds} min={0} max={5} step={1} unit=" s" onChange={(v) => update({ gifHoldSeconds: v })} />
+
             <h2 className="group-title">Export</h2>
             <ChoiceRow label="Picture format" hint="JPEG is smaller; PNG is lossless" value={settings.exportFormat} options={[{ value: 'jpeg', label: 'JPEG' }, { value: 'png', label: 'PNG' }]} onChange={(v) => update({ exportFormat: v })} />
             <NumberRow label="JPEG quality" value={settings.exportQuality} min={70} max={100} step={5} onChange={(v) => update({ exportQuality: v })} />
@@ -273,15 +280,19 @@ function AdminPanel(): React.JSX.Element {
         )}
       </div>
 
-      {/* ------------- Session detail ------------- */}
+      {/* ------------- Session detail (covers the whole window) ------------- */}
       {selected && (
-        <div className="modal">
-          <img src={fileUrl(selected.stripPath, selected.createdAt)} alt="" style={{ maxHeight: 640 }} />
+        <Overlay>
+          <div className="detail-row">
+            <img src={fileUrl(selected.stripPath, selected.createdAt)} alt="" />
+            {selected.gifPath && <img src={fileUrl(selected.gifPath, selected.createdAt)} alt="clip" />}
+          </div>
           <div className="modal-text">
             {new Date(selected.createdAt).toLocaleString()} · {getLayoutById(selected.layoutId)?.name ?? selected.layoutId} ·{' '}
             {getTemplateById(selected.templateId)?.name ?? selected.templateId}
             <br />
             {selected.width}×{selected.height}px · {fmt(selected.bytes)}
+            {selected.gifPath ? ' · with clip' : ''}
             {selected.originalsKept ? ' (originals kept)' : ''}
           </div>
           <div className="modal-buttons">
@@ -289,14 +300,14 @@ function AdminPanel(): React.JSX.Element {
             <Button label="Show file" variant="secondary" onClick={() => window.api.showInFolder(selected.stripPath)} />
             <Button label="Delete" onClick={() => askDelete(selected)} style={{ background: '#e53e3e' }} />
           </div>
-        </div>
+        </Overlay>
       )}
 
       {/* ------------- Change PIN ------------- */}
       {pinStep && (
-        <div className="pin-overlay">
+        <Overlay background="#fff5f8" zIndex={1500}>
           <PinPad key={pinStep} length={4} title="Change PIN" message={pinMsg} onComplete={onNewPin} onCancel={() => setPinStep(null)} />
-        </div>
+        </Overlay>
       )}
 
       {/* ------------- Are you sure? ------------- */}

@@ -13,6 +13,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cameraHeight: 1080,
   mirrorPreview: true,
   mirrorPhotos: true,
+  // behind-the-scenes clip (animated GIF)
+  gifEnabled: true, // admin-only switch: guests never see a button for this
+  gifFps: 8, // smoothness
+  gifWidth: 360, // width of the whole animated strip in pixels
+  gifHoldSeconds: 2, // pause on the finished strip at the end of each loop
   // export
   exportFormat: 'jpeg',
   exportQuality: 95,

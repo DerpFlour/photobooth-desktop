@@ -11,6 +11,7 @@ import {
   loadSessions,
   pruneStorage,
   reconcileStorage,
+  removeClip,
   resolveSessionFile,
   saveSession,
   sessionsDir,
@@ -139,7 +140,10 @@ if (!app.requestSingleInstanceLock()) {
     protocol.handle('pbfile', (request) => {
       const relative = decodeURIComponent(new URL(request.url).pathname).replace(/^\/+/, '')
       const full = resolveSessionFile(relative)
-      if (!full || !existsSync(full)) return new Response('Not found', { status: 404 })
+      if (!full || !existsSync(full)) {
+        console.warn('[pbfile] file not found:', relative)
+        return new Response('Not found', { status: 404 })
+      }
       return net.fetch(pathToFileURL(full).toString())
     })
 
@@ -163,7 +167,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('sessions:save', (_e, input: SessionSaveInput) => saveSession(input))
     ipcMain.handle('sessions:list', (_e, limit: number) => listSessions(limit))
     ipcMain.handle('sessions:delete', (_e, id: string) => deleteSession(id))
-    ipcMain.handle('sessions:deleteAll', () => deleteAllSessions())
+    ipcMain.handle('sessions:removeClip', (_e, id: string) => removeClip(id))
     ipcMain.handle('storage:summary', () => storageSummary())
     ipcMain.handle('storage:prune', () => pruneStorage())
     ipcMain.handle('storage:ensure', () => ensureStorage())

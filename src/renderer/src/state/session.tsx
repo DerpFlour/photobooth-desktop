@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getLayoutById } from '../config/layouts'
+import { ClipShots } from '../render/clip'
 import { clearSlotCache } from '../render/drawStrip'
 import { Adjustments, CapturedPhoto, EditState, StickerInstance } from '../types'
 
@@ -14,11 +15,13 @@ type SessionState = {
   templateId: string | null
   photos: (CapturedPhoto | null)[] // one per slot, in slot order; null = not taken yet
   edit: EditState
+  clipShots: ClipShots // behind-the-scenes footage by photo id (memory only)
   chooseLayout: (id: string) => void
   chooseTemplate: (id: string) => void
   setPhoto: (index: number, photo: CapturedPhoto) => void
   swapPhotos: (a: number, b: number) => void
   clearPhotos: () => void
+  addClipShot: (photoId: string, frames: ImageData[]) => void
   setFilter: (id: string) => void
   setAdjustment: (key: keyof Adjustments, value: number) => void
   resetAdjustments: () => void // sliders only
@@ -42,6 +45,7 @@ export function SessionProvider({ children }: { children: ReactNode }): React.JS
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [photos, setPhotos] = useState<(CapturedPhoto | null)[]>([])
   const [edit, setEdit] = useState<EditState>(DEFAULT_EDIT)
+  const [clipShots, setClipShots] = useState<ClipShots>({})
 
   // The capture loop runs for many seconds, so it needs the NEWEST photos.
   const photosRef = useRef(photos)
@@ -56,6 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }): React.JS
       templateId,
       photos,
       edit,
+      clipShots,
       chooseLayout: (id) => {
         release(photosRef.current)
         clearSlotCache()
@@ -64,14 +69,23 @@ export function SessionProvider({ children }: { children: ReactNode }): React.JS
         setTemplateId(null)
         setPhotos(Array(getLayoutById(id)?.photoCount ?? 0).fill(null))
         setEdit(DEFAULT_EDIT) // sticker positions depend on the layout
+        setClipShots({})
       },
       chooseTemplate: setTemplateId,
       setPhoto: (index, photo) => {
         const old = photosRef.current[index]
-        if (old) URL.revokeObjectURL(old.url) // a retake replaces the old photo
+        if (old) {
+          URL.revokeObjectURL(old.url) // a retake replaces the old photo...
+          setClipShots((prev) => {
+            const next = { ...prev }
+            delete next[old.id] // ...and its footage
+            return next
+          })
+        }
         setPhotos((prev) => prev.map((p, i) => (i === index ? photo : p)))
       },
-      // Swapping (never deleting) is what makes reordering safe.
+      // Swapping (never deleting) is what makes reordering safe. The footage
+      // is stored by photo id, so it follows its photo automatically.
       swapPhotos: (a, b) =>
         setPhotos((prev) => {
           const next = [...prev]
@@ -81,7 +95,9 @@ export function SessionProvider({ children }: { children: ReactNode }): React.JS
       clearPhotos: () => {
         release(photosRef.current)
         setPhotos((prev) => prev.map(() => null))
+        setClipShots({})
       },
+      addClipShot: (photoId, frames) => setClipShots((prev) => ({ ...prev, [photoId]: frames })),
 
       setFilter: (filterId) => setEdit((prev) => ({ ...prev, filterId })),
       setAdjustment: (key, v) =>
@@ -130,9 +146,10 @@ export function SessionProvider({ children }: { children: ReactNode }): React.JS
         setTemplateId(null)
         setPhotos([])
         setEdit(DEFAULT_EDIT)
+        setClipShots({})
       }
     }),
-    [sessionId, layoutId, templateId, photos, edit]
+    [sessionId, layoutId, templateId, photos, edit, clipShots]
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
