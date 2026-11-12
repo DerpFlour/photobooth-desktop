@@ -2,11 +2,24 @@ import { app, BrowserWindow, ipcMain, Menu, net, protocol, screen, session, shel
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import {
+  deleteRemote,
+  deleteRemotes,
+  kickQueue,
+  normalizeBase,
+  queueSummary,
+  retryNow,
+  shareSession,
+  startCloudQueue,
+  testConnection
+} from './cloud'
 import { getSettings, loadSettings, updateSettings } from './settings'
 import {
+  cloudTokens,
   deleteAllSessions,
   deleteSession,
   ensureStorage,
+  getSession,
   listSessions,
   loadSessions,
   pruneStorage,
@@ -25,6 +38,10 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let win: BrowserWindow | null = null
+
+// The booth key never leaves this process: screens only see this mask.
+const MASK = '********'
+const forScreens = (s: AppSettings): AppSettings => ({ ...s, cloudBoothKey: s.cloudBoothKey ? MASK : '' })
 
 function createWindow(): void {
   const settings = getSettings()
@@ -135,6 +152,7 @@ if (!app.requestSingleInstanceLock()) {
       console.warn('[startup] storage repair failed (continuing)', e)
     }
     pruneStorage().catch((e) => console.warn('[startup] cleanup failed', e))
+    startCloudQueue() // uploads anything still waiting, and keeps checking
 
     // Serve saved pictures to the screens, from the sessions folder only.
     protocol.handle('pbfile', (request) => {
@@ -154,11 +172,15 @@ if (!app.requestSingleInstanceLock()) {
     )
     session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed(permission))
 
-    ipcMain.handle('settings:get', () => getSettings())
+    ipcMain.handle('settings:get', () => forScreens(getSettings()))
     ipcMain.handle('settings:update', (_e, patch: Partial<AppSettings>) => {
-      const next = updateSettings(patch)
-      if (patch.fullscreen !== undefined) win?.setFullScreen(next.fullscreen)
-      return next
+      const clean: Partial<AppSettings> = { ...patch }
+      if (clean.cloudBoothKey === MASK) delete clean.cloudBoothKey // unchanged
+      if (typeof clean.cloudBaseUrl === 'string') clean.cloudBaseUrl = normalizeBase(clean.cloudBaseUrl)
+      const next = updateSettings(clean)
+      if (clean.fullscreen !== undefined) win?.setFullScreen(next.fullscreen)
+      if ('cloudEnabled' in clean || 'cloudBaseUrl' in clean || 'cloudBoothKey' in clean) kickQueue()
+      return forScreens(next)
     })
     ipcMain.handle('window:toggleFullscreen', () => toggleFullscreen())
     ipcMain.handle('window:nextDisplay', () => nextDisplay())
@@ -166,7 +188,17 @@ if (!app.requestSingleInstanceLock()) {
 
     ipcMain.handle('sessions:save', (_e, input: SessionSaveInput) => saveSession(input))
     ipcMain.handle('sessions:list', (_e, limit: number) => listSessions(limit))
-    ipcMain.handle('sessions:delete', (_e, id: string) => deleteSession(id))
+    ipcMain.handle('sessions:delete', async (_e, id: string) => {
+      const token = getSession(id)?.cloud?.token
+      deleteSession(id)
+      if (!token) return { remote: 'none' as const }
+      return { remote: (await deleteRemote(token)) ? ('deleted' as const) : ('failed' as const) }
+    })
+    ipcMain.handle('sessions:deleteAll', () => {
+      const tokens = cloudTokens()
+      deleteAllSessions()
+      void deleteRemotes(tokens) // the online copies are deleted in the background
+    })
     ipcMain.handle('sessions:removeClip', (_e, id: string) => removeClip(id))
     ipcMain.handle('storage:summary', () => storageSummary())
     ipcMain.handle('storage:prune', () => pruneStorage())
@@ -178,6 +210,12 @@ if (!app.requestSingleInstanceLock()) {
       const full = resolveSessionFile(relativePath)
       if (full) shell.showItemInFolder(full)
     })
+
+    ipcMain.handle('cloud:share', (_e, id: string) => shareSession(id))
+    ipcMain.handle('cloud:status', (_e, id: string) => getSession(id)?.cloud ?? null)
+    ipcMain.handle('cloud:test', () => testConnection())
+    ipcMain.handle('cloud:queue', () => queueSummary())
+    ipcMain.handle('cloud:retry', () => retryNow())
 
     createWindow()
     app.on('activate', () => {

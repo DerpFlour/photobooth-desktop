@@ -17,6 +17,11 @@ declare global {
     gifFps: number
     gifWidth: number
     gifHoldSeconds: number
+    // online sharing
+    cloudEnabled: boolean
+    cloudBaseUrl: string
+    cloudBoothKey: string // the screens only ever see '********' or ''
+    cloudRetentionDays: number
     // export
     exportFormat: 'jpeg' | 'png'
     exportQuality: number
@@ -38,6 +43,29 @@ declare global {
     minFreeSpaceMB: number
   }
 
+  // The online-sharing state of one session.
+  interface CloudInfo {
+    token: string // the guest's secret link token
+    base: string // the website this session is sent to
+    url: string // the link inside the QR code
+    status: 'pending' | 'uploading' | 'ready' | 'failed'
+    rev: number // goes up each time the session is saved again
+    attempts: number
+    error?: string
+    nextTry?: number // when to retry after a failure
+    expiresAt?: string
+  }
+
+  interface CloudQueue {
+    waiting: number
+    failed: number
+  }
+
+  interface CloudTestResult {
+    ok: boolean
+    message: string
+  }
+
   // One saved guest session. Paths are relative to the app's data folder.
   interface SessionRecord {
     id: string
@@ -47,6 +75,7 @@ declare global {
     stripPath: string
     thumbPath: string
     gifPath?: string // the behind-the-scenes clip, if there is one
+    cloud?: CloudInfo // online sharing, if it is switched on
     width: number
     height: number
     bytes: number // total size of all this session's files
@@ -85,7 +114,7 @@ declare global {
     quit(): Promise<void>
     saveSession(input: SessionSaveInput): Promise<SessionRecord>
     listSessions(limit: number): Promise<SessionRecord[]>
-    deleteSession(id: string): Promise<void>
+    deleteSession(id: string): Promise<{ remote: 'none' | 'deleted' | 'failed' }>
     deleteAllSessions(): Promise<void>
     removeClip(id: string): Promise<SessionRecord | null>
     storageSummary(): Promise<StorageSummary>
@@ -93,6 +122,11 @@ declare global {
     ensureStorage(): Promise<{ ok: boolean; freeMB: number }>
     openSessionsFolder(): Promise<void>
     showInFolder(relativePath: string): Promise<void>
+    cloudShare(id: string): Promise<CloudInfo | null>
+    cloudStatus(id: string): Promise<CloudInfo | null>
+    cloudTest(): Promise<CloudTestResult>
+    cloudQueue(): Promise<CloudQueue>
+    cloudRetry(): Promise<void>
   }
 
   interface Window {

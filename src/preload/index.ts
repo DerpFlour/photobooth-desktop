@@ -16,7 +16,12 @@ const api: PhotoboothApi = {
   pruneStorage: () => ipcRenderer.invoke('storage:prune'),
   ensureStorage: () => ipcRenderer.invoke('storage:ensure'),
   openSessionsFolder: () => ipcRenderer.invoke('storage:openFolder'),
-  showInFolder: (relativePath) => ipcRenderer.invoke('storage:showInFolder', relativePath)
+  showInFolder: (relativePath) => ipcRenderer.invoke('storage:showInFolder', relativePath),
+  cloudShare: (id) => ipcRenderer.invoke('cloud:share', id),
+  cloudStatus: (id) => ipcRenderer.invoke('cloud:status', id),
+  cloudTest: () => ipcRenderer.invoke('cloud:test'),
+  cloudQueue: () => ipcRenderer.invoke('cloud:queue'),
+  cloudRetry: () => ipcRenderer.invoke('cloud:retry')
 }
 
 contextBridge.exposeInMainWorld('api', api)

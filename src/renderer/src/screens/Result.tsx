@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/Button'
+import { QrCode } from '../components/QrCode'
 import { fileUrl } from '../config/assets'
 import { getLayoutById } from '../config/layouts'
 import { getTemplateById } from '../config/templates'
@@ -18,6 +19,16 @@ type State =
 const toBuffer = (bytes: Uint8Array): ArrayBuffer =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
 
+// What the guest sees under the QR code.
+const statusText = (c: CloudInfo): string =>
+  c.status === 'ready'
+    ? '✓ Ready! Scan to download'
+    : c.status === 'uploading'
+      ? 'Uploading your photos…'
+      : c.status === 'failed'
+        ? 'No internet right now. Your photos will upload automatically.'
+        : 'Getting your photos ready…'
+
 export function Result(): React.JSX.Element | null {
   const nav = useNav()
   const { settings } = useSettings()
@@ -25,6 +36,7 @@ export function Result(): React.JSX.Element | null {
   const [state, setState] = useState<State>({ status: 'saving', step: 'Rendering at full resolution' })
   const [gifUrl, setGifUrl] = useState<string | null>(null) // the clip, shown beside the strip
   const [clipNote, setClipNote] = useState('')
+  const [cloud, setCloud] = useState<CloudInfo | null | undefined>(undefined) // undefined = still loading
   const urlRef = useRef<string | null>(null)
 
   const layout = getLayoutById(layoutId)
@@ -127,6 +139,33 @@ export function Result(): React.JSX.Element | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Once saved: ask the booth for the guest's link (instant, even offline),
+  // then watch the upload until the photos are online.
+  const doneId = state.status === 'done' ? state.record.id : null
+  useEffect(() => {
+    if (!doneId || !settings.cloudEnabled) return
+    let alive = true
+    let timer: number | undefined
+    const poll = async (): Promise<void> => {
+      const info = await window.api.cloudStatus(doneId)
+      if (!alive) return
+      setCloud(info)
+      if (info && info.status !== 'ready') timer = window.setTimeout(poll, 2000)
+    }
+    window.api
+      .cloudShare(doneId)
+      .then((info) => {
+        if (!alive) return
+        setCloud(info)
+        if (info && info.status !== 'ready') timer = window.setTimeout(poll, 2000)
+      })
+      .catch(() => alive && setCloud(null))
+    return () => {
+      alive = false
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [doneId, settings.cloudEnabled])
+
   if (!layout || !template || !sessionId) return null
 
   if (state.status === 'saving') {
@@ -153,13 +192,19 @@ export function Result(): React.JSX.Element | null {
   }
 
   const { record } = state
+
+  // Size the pictures so they ALWAYS leave room for the QR column.
+  const aspect = record.width / record.height
+  const figures = gifUrl ? 2 : 1
+  const figH = Math.min(800, Math.floor((1740 - 520 - 60 * figures) / (figures * aspect)))
+
   return (
     <div className="screen">
       <div className="result-body">
         <div className="result-figure">
           <img
             src={fileUrl(record.stripPath, record.createdAt)}
-            style={{ aspectRatio: record.width / record.height }}
+            style={{ height: figH, aspectRatio: aspect }}
             alt="Your photo strip"
           />
           <span>Your strip</span>
@@ -168,22 +213,43 @@ export function Result(): React.JSX.Element | null {
         {/* The clip appears automatically beside the strip */}
         {gifUrl && (
           <div className="result-figure">
-            <img src={gifUrl} alt="Behind-the-scenes clip" />
+            <img src={gifUrl} style={{ height: figH }} alt="Behind-the-scenes clip" />
             <span>Behind the scenes</span>
           </div>
         )}
 
         <div className="result-info">
-          <h1 className="result-title">Your strip is ready ✨</h1>
-          <p>
-            {record.width} × {record.height} px
-            <br />≈ {(record.width / 300).toFixed(1)} × {(record.height / 300).toFixed(1)} in at 300 dpi
-            <br />
-            {(record.bytes / 1024).toFixed(0)} KB saved · {state.ms} ms
-          </p>
-          <p className="saved">✓ Saved on this computer</p>
-          {clipNote && <p className="note">{clipNote}</p>}
-          <p className="note">QR code and printing arrive in later phases.</p>
+          <h1 className="result-title">Your photos are ready ✨</h1>
+
+          {settings.cloudEnabled && (
+            <div className="qr-block">
+              {cloud === undefined ? (
+                <div className="qr-sub">Preparing your link…</div>
+              ) : cloud === null ? (
+                <div className="qr-sub">QR download isn’t set up yet. Please ask the booth operator.</div>
+              ) : (
+                <>
+                  <div className="qr-card">
+                    <QrCode value={cloud.url} size={340} />
+                  </div>
+                  <div className="qr-title">Scan with your phone</div>
+                  <div className="qr-sub">to download your strip and clip</div>
+                  <div className={`qr-status ${cloud.status === 'ready' ? 'ok' : 'wait'}`}>{statusText(cloud)}</div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="result-meta">
+            {record.width} × {record.height} px · {(record.bytes / 1024).toFixed(0)} KB · {state.ms} ms
+            <br />✓ Saved on this computer
+            {clipNote && (
+              <>
+                <br />
+                {clipNote}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

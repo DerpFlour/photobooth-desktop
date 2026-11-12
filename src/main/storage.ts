@@ -83,6 +83,12 @@ export function saveSession(input: SessionSaveInput): SessionRecord {
     photoCount: input.photoCount,
     originalsKept: input.originals.length > 0
   }
+  // Saving the same session again (the guest went back and changed something)
+  // keeps its online link; the new pictures are simply uploaded again.
+  const previous = records.find((r) => r.id === input.id)
+  if (previous?.cloud) {
+    record.cloud = { ...previous.cloud, status: 'pending', rev: previous.cloud.rev + 1, attempts: 0, error: undefined, nextTry: undefined }
+  }
   records = [record, ...records.filter((r) => r.id !== input.id)]
   persist()
 
@@ -92,6 +98,21 @@ export function saveSession(input: SessionSaveInput): SessionRecord {
 }
 
 export const listSessions = (limit: number): SessionRecord[] => records.slice(0, Math.max(0, limit))
+
+export const getSession = (id: string): SessionRecord | undefined => records.find((r) => r.id === id)
+
+// Updates a session's online-sharing information and saves it.
+export function setCloud(id: string, cloud: CloudInfo | undefined): void {
+  const record = records.find((r) => r.id === id)
+  if (!record) return
+  record.cloud = cloud
+  persist()
+}
+
+// Sessions whose pictures are not online yet.
+export const cloudQueue = (): SessionRecord[] => records.filter((r) => r.cloud && r.cloud.status !== 'ready')
+
+export const cloudTokens = (): string[] => records.flatMap((r) => (r.cloud ? [r.cloud.token] : []))
 
 // Deletes just the behind-the-scenes clip from a saved session.
 export function removeClip(id: string): SessionRecord | null {

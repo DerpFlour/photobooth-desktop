@@ -349,3 +349,25 @@ button { font: inherit; cursor: pointer; border: none; }
 .result-figure img { height: 800px; max-height: none; width: auto; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
 .result-figure span { font-size: 28px; font-weight: 700; color: var(--muted); }
 .result-info { max-width: 520px; }
+
+/* ---------- QR code on the result screen ---------- */
+.result-info.qr-layout { max-width: 520px; }
+.qr-block { text-align: center; margin: 4px 0 20px; }
+.qr-card { display: inline-block; background: #fff; border-radius: 32px; padding: 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14); }
+.qr-title { font-size: 44px; font-weight: 900; color: var(--primary-dark); margin: 18px 0 2px; }
+.qr-sub { font-size: 28px; color: var(--muted); }
+.qr-status { font-size: 28px; font-weight: 800; margin-top: 14px; }
+.qr-status.ok { color: #2f855a; }
+.qr-status.wait { color: var(--muted); }
+.result-meta { font-size: 22px; color: var(--muted); line-height: 1.6; }
+.result-info { width: 520px; }
+.result-info .result-title { font-size: 52px; margin-bottom: 14px; text-align: center; }
+
+/* ---------- text boxes in the admin ---------- */
+input { user-select: text; -webkit-user-select: text; }
+.text-input {
+  flex: 0 0 600px; font: inherit; font-size: 28px; padding: 16px 20px; border-radius: 18px;
+  border: 3px solid var(--border); background: #fff; color: var(--text);
+}
+.text-input:focus { outline: none; border-color: var(--primary); }
+.chip:disabled { opacity: 0.4; }

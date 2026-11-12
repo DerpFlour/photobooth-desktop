@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { IdleWatcher } from './components/IdleWatcher'
 import { Stage } from './components/Stage'
 import { NavProvider, useNav } from './state/nav'
@@ -13,6 +14,16 @@ import { LayoutSelect } from './screens/LayoutSelect'
 import { Result } from './screens/Result'
 import { Review } from './screens/Review'
 import { TemplateSelect } from './screens/TemplateSelect'
+
+// The screens update instantly, but the connection to the booth program only
+// updates when the app is fully restarted. If they don't match, say so.
+const REQUIRED_API = ['cloudShare', 'cloudStatus', 'cloudTest', 'cloudQueue', 'cloudRetry'] as const
+
+function missingApi(): string[] {
+  const api = window.api as unknown as Record<string, unknown> | undefined
+  if (!api) return ['the connection to the booth program']
+  return REQUIRED_API.filter((name) => typeof api[name] !== 'function')
+}
 
 function Router(): React.JSX.Element | null {
   const { screen } = useNav()
@@ -51,16 +62,31 @@ function Router(): React.JSX.Element | null {
 }
 
 export default function App(): React.JSX.Element {
+  const missing = missingApi()
+  if (missing.length > 0) {
+    return (
+      <Stage>
+        <div className="center-msg">
+          The booth program needs a full restart
+          <p>Close this window, press Ctrl+C in the terminal, then run npm run dev again.</p>
+          <p style={{ fontSize: 22, color: '#9b8790' }}>Out of date: {missing.join(', ')}</p>
+        </div>
+      </Stage>
+    )
+  }
+
   return (
     <Stage>
-      <SettingsProvider>
-        <NavProvider>
-          <SessionProvider>
-            <Router />
-            <IdleWatcher />
-          </SessionProvider>
-        </NavProvider>
-      </SettingsProvider>
+      <ErrorBoundary>
+        <SettingsProvider>
+          <NavProvider>
+            <SessionProvider>
+              <Router />
+              <IdleWatcher />
+            </SessionProvider>
+          </NavProvider>
+        </SettingsProvider>
+      </ErrorBoundary>
     </Stage>
   )
 }

@@ -3,7 +3,7 @@ import { Button } from '../components/Button'
 import { Confirm } from '../components/Confirm'
 import { Overlay } from '../components/Overlay'
 import { PinPad } from '../components/PinPad'
-import { ChoiceRow, NumberRow, ToggleRow } from '../components/SettingRows'
+import { ChoiceRow, NumberRow, TextRow, ToggleRow } from '../components/SettingRows'
 import { fileUrl } from '../config/assets'
 import { getLayoutById } from '../config/layouts'
 import { getTemplateById } from '../config/templates'
@@ -76,9 +76,11 @@ function AdminPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('sessions')
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [summary, setSummary] = useState<StorageSummary | null>(null)
+  const [queue, setQueue] = useState<CloudQueue>({ waiting: 0, failed: 0 })
   const [selected, setSelected] = useState<SessionRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [cloudTest, setCloudTest] = useState<CloudTestResult | null>(null)
   const [confirm, setConfirm] = useState<{
     title: string
     message: string
@@ -93,6 +95,7 @@ function AdminPanel(): React.JSX.Element {
     try {
       setSessions(await window.api.listSessions(1000))
       setSummary(await window.api.storageSummary())
+      setQueue(await window.api.cloudQueue())
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -102,14 +105,30 @@ function AdminPanel(): React.JSX.Element {
     refresh()
   }, [refresh])
 
+  const copyLink = async (url: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setNotice('Link copied.')
+    } catch {
+      setNotice(url) // couldn't copy: at least show it
+    }
+  }
+
   const askDelete = (rec: SessionRecord): void =>
     setConfirm({
       title: 'Delete this session?',
-      message: 'The photo strip will be permanently deleted from this computer.',
+      message: 'The photo strip will be permanently deleted from this computer, and from the online gallery if it was shared.',
       yesLabel: 'Delete',
       run: async () => {
-        await window.api.deleteSession(rec.id)
+        const result = await window.api.deleteSession(rec.id)
         setSelected(null)
+        setNotice(
+          result.remote === 'failed'
+            ? 'Deleted here. The online copy could not be deleted right now; it will expire by itself.'
+            : result.remote === 'deleted'
+              ? 'Deleted, including the online copy.'
+              : ''
+        )
         await refresh()
       }
     })
@@ -117,7 +136,7 @@ function AdminPanel(): React.JSX.Element {
   const askDeleteAll = (): void =>
     setConfirm({
       title: 'Delete ALL sessions?',
-      message: 'Every saved photo strip on this computer will be permanently deleted.',
+      message: 'Every saved photo strip on this computer will be permanently deleted. Online copies are deleted in the background.',
       yesLabel: 'Delete all',
       run: async () => {
         await window.api.deleteAllSessions()
@@ -180,12 +199,14 @@ function AdminPanel(): React.JSX.Element {
             <p className="admin-hint">
               {sessions.length} saved session{sessions.length === 1 ? '' : 's'}, newest first. Tap one to open it.
             </p>
+            {notice && <div className="notice" style={{ marginTop: 0, marginBottom: 12 }}>{notice}</div>}
             <div className="admin-grid">
               {sessions.map((s) => (
                 <button key={s.id} className="session-card" onClick={() => setSelected(s)}>
                   <img src={fileUrl(s.thumbPath, s.createdAt)} style={{ aspectRatio: s.width / s.height }} alt="" draggable={false} />
                   <span>
                     {new Date(s.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    {s.cloud ? (s.cloud.status === 'ready' ? ' · online' : ` · ${s.cloud.status}`) : ''}
                   </span>
                 </button>
               ))}
@@ -241,6 +262,46 @@ function AdminPanel(): React.JSX.Element {
             <NumberRow label="Clip size (width)" hint="Smaller files load faster on guests' phones" value={settings.gifWidth} min={240} max={480} step={60} unit=" px" onChange={(v) => update({ gifWidth: v })} />
             <NumberRow label="Pause on the finished strip" hint="Shown at the end of each loop" value={settings.gifHoldSeconds} min={0} max={5} step={1} unit=" s" onChange={(v) => update({ gifHoldSeconds: v })} />
 
+            <h2 className="group-title">Online sharing (QR code)</h2>
+            <ToggleRow label="Show a QR code so guests can download their photos" hint="Needs the website address and booth key below" value={settings.cloudEnabled} onChange={(v) => update({ cloudEnabled: v })} />
+            <TextRow label="Website address" hint="From Vercel, for example https://photobooth-gallery-lac.vercel.app" value={settings.cloudBaseUrl} placeholder="https://your-site.vercel.app" onSave={(v) => update({ cloudBaseUrl: v })} />
+            <TextRow label="Booth key" hint="The BOOTH_API_KEY from Vercel. Kept on this computer and never shown again" value={settings.cloudBoothKey} secret placeholder="paste the key here" onSave={(v) => update({ cloudBoothKey: v })} />
+            <NumberRow label="Keep guest links online for" hint="Photos are deleted from the internet after this many days" value={settings.cloudRetentionDays} min={1} max={30} step={1} unit=" days" onChange={(v) => update({ cloudRetentionDays: v })} />
+            <div className="row">
+              <div className="row-text">
+                <div className="row-label">Connection</div>
+                <div className="row-hint" style={cloudTest ? { color: cloudTest.ok ? '#2f855a' : '#c53030', fontWeight: 700 } : undefined}>
+                  {cloudTest ? cloudTest.message : 'Check that the address and key are right'}
+                </div>
+              </div>
+              <button
+                className="chip"
+                onClick={async () => {
+                  setCloudTest({ ok: false, message: 'Testing…' })
+                  setCloudTest(await window.api.cloudTest())
+                }}
+              >
+                Test connection
+              </button>
+            </div>
+            <div className="row">
+              <div className="row-text">
+                <div className="row-label">Upload queue</div>
+                <div className="row-hint">
+                  {queue.waiting} waiting · {queue.failed} failed (failed uploads retry by themselves)
+                </div>
+              </div>
+              <button
+                className="chip"
+                onClick={async () => {
+                  await window.api.cloudRetry()
+                  await refresh()
+                }}
+              >
+                Retry now
+              </button>
+            </div>
+
             <h2 className="group-title">Export</h2>
             <ChoiceRow label="Picture format" hint="JPEG is smaller; PNG is lossless" value={settings.exportFormat} options={[{ value: 'jpeg', label: 'JPEG' }, { value: 'png', label: 'PNG' }]} onChange={(v) => update({ exportFormat: v })} />
             <NumberRow label="JPEG quality" value={settings.exportQuality} min={70} max={100} step={5} onChange={(v) => update({ exportQuality: v })} />
@@ -294,10 +355,22 @@ function AdminPanel(): React.JSX.Element {
             {selected.width}×{selected.height}px · {fmt(selected.bytes)}
             {selected.gifPath ? ' · with clip' : ''}
             {selected.originalsKept ? ' (originals kept)' : ''}
+            {selected.cloud ? ` · online: ${selected.cloud.status}` : ''}
+            {selected.cloud?.error ? ` (${selected.cloud.error})` : ''}
           </div>
           <div className="modal-buttons">
             <Button label="Close" variant="secondary" onClick={() => setSelected(null)} />
             <Button label="Show file" variant="secondary" onClick={() => window.api.showInFolder(selected.stripPath)} />
+            {selected.cloud && (
+              <Button
+                label="Copy link"
+                variant="secondary"
+                onClick={() => {
+                  if (selected.cloud) copyLink(selected.cloud.url)
+                  setSelected(null)
+                }}
+              />
+            )}
             <Button label="Delete" onClick={() => askDelete(selected)} style={{ background: '#e53e3e' }} />
           </div>
         </Overlay>

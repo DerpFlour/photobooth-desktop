@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 type RowProps = { label: string; hint?: string }
 
 function Text({ label, hint }: RowProps): React.JSX.Element {
@@ -69,6 +71,33 @@ export function ChoiceRow<T extends string>(
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// A text box with a Save button (type with the laptop's keyboard).
+export function TextRow(
+  props: RowProps & { value: string; placeholder?: string; secret?: boolean; onSave: (value: string) => void }
+): React.JSX.Element {
+  const [text, setText] = useState(props.value)
+  useEffect(() => {
+    setText(props.value)
+  }, [props.value])
+  return (
+    <div className="row">
+      <Text label={props.label} hint={props.hint} />
+      <input
+        className="text-input"
+        type={props.secret ? 'password' : 'text'}
+        value={text}
+        placeholder={props.placeholder}
+        spellCheck={false}
+        autoComplete="off"
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button className="chip" disabled={text === props.value} onClick={() => props.onSave(text.trim())}>
+        Save
+      </button>
     </div>
   )
 }

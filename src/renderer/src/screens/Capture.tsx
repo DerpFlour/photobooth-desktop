@@ -23,7 +23,6 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
   const [count, setCount] = useState<number | null>(null)
   const [shot, setShot] = useState<string | null>(null)
   const [flashKey, setFlashKey] = useState(0)
-  const [rec, setRec] = useState(false) // true while behind-the-scenes footage is recording
 
   // Don't auto-reset to the home screen while photos are being taken.
   useEffect(() => {
@@ -68,7 +67,6 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
         window.clearInterval(timer)
         timer = undefined
       }
-      setRec(false)
     }
 
     setRunning(true)
@@ -76,7 +74,7 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
       for (const idx of indices) {
         setCurrent(idx)
 
-        // Start recording THIS photo's footage (countdown through the preview).
+        // Start recording THIS photo's footage (the countdown only).
         let recorder: ShotRecorder | null = null
         if (recordClip && video && video.videoWidth > 0) {
           const s = layout.slots[idx]
@@ -89,7 +87,6 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
           recorder = r
           r.snap(video)
           timer = window.setInterval(() => r.snap(video), Math.round(1000 / fps))
-          setRec(true)
         }
 
         // Countdown: 3, 2, 1
@@ -186,13 +183,6 @@ export function Capture({ retake }: { retake?: number }): React.JSX.Element | nu
           </div>
         )}
         {flashKey > 0 && <div className="flash" key={`flash-${flashKey}`} />}
-        {/* Always visible while behind-the-scenes footage is recording */}
-        {rec && (
-          <div className="rec">
-            <i />
-            REC · behind-the-scenes clip
-          </div>
-        )}
       </div>
 
       {/* Progress dots: filled once a slot has a photo */}

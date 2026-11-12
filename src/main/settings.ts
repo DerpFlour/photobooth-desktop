@@ -18,6 +18,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gifFps: 8, // smoothness
   gifWidth: 360, // width of the whole animated strip in pixels
   gifHoldSeconds: 2, // pause on the finished strip at the end of each loop
+    // online sharing (QR code + the guest download page)
+  cloudEnabled: false,
+  cloudBaseUrl: '', // the website address from Vercel
+  cloudBoothKey: '', // the BOOTH_API_KEY (never shown on screen)
+  cloudRetentionDays: 7, // how long guest links stay online (1-30)
   // export
   exportFormat: 'jpeg',
   exportQuality: 95,
