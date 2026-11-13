@@ -22,7 +22,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cloudEnabled: false,
   cloudBaseUrl: '', // the website address from Vercel
   cloudBoothKey: '', // the BOOTH_API_KEY (never shown on screen)
-  cloudRetentionDays: 7, // how long guest links stay online (1-30)
+  cloudRetentionDays: 5, // how long guest links stay online (1-30)
+    // printing
+  printEnabled: true,
+  printerName: '', // '' = use whichever printer is the Windows default
+  printPaper: '4r', // 4R = 4x6 inch photo paper
+  printCopies: 1, // sheets printed each time the Print button is pressed
+  printFillSheet: true, // a 2x6 strip prints twice side by side on 4x6 paper
+  printMarginMm: 0, // 0 = edge to edge; raise it if the printer cuts off the edges
+  printMaxPerSession: 2, // times a guest may press Print (0 = unlimited)
+  printUseDriverPaper: false, // true = ignore our paper size, use the printer's own default
   // export
   exportFormat: 'jpeg',
   exportQuality: 95,

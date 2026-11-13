@@ -7,6 +7,7 @@ import { getTemplateById } from '../config/templates'
 import { canvasToBlob, drawStrip, makeThumbnail } from '../render/drawStrip'
 import { renderClipGif } from '../render/gif'
 import { loadFrame, loadPhotos, loadStickers } from '../render/loaders'
+import { countPrint, printSession, printsUsed } from '../render/printing'
 import { useNav } from '../state/nav'
 import { useSession } from '../state/session'
 import { useSettings } from '../state/settings'
@@ -37,6 +38,9 @@ export function Result(): React.JSX.Element | null {
   const [gifUrl, setGifUrl] = useState<string | null>(null) // the clip, shown beside the strip
   const [clipNote, setClipNote] = useState('')
   const [cloud, setCloud] = useState<CloudInfo | null | undefined>(undefined) // undefined = still loading
+  const [printing, setPrinting] = useState(false)
+  const [printMsg, setPrintMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [printedCount, setPrintedCount] = useState(sessionId ? printsUsed(sessionId) : 0)
   const urlRef = useRef<string | null>(null)
 
   const layout = getLayoutById(layoutId)
@@ -97,6 +101,7 @@ export function Result(): React.JSX.Element | null {
               fps: settings.gifFps,
               width: settings.gifWidth,
               holdMs: settings.gifHoldSeconds * 1000,
+              maxBytes: settings.gifMaxMB * 1024 * 1024,
               onProgress: (label, done, total) => step(`${label} ${done}/${total}`)
             })
             if (bytes) gif = toBuffer(bytes)
@@ -147,19 +152,26 @@ export function Result(): React.JSX.Element | null {
     let alive = true
     let timer: number | undefined
     const poll = async (): Promise<void> => {
-      const info = await window.api.cloudStatus(doneId)
-      if (!alive) return
-      setCloud(info)
-      if (info && info.status !== 'ready') timer = window.setTimeout(poll, 2000)
-    }
-    window.api
-      .cloudShare(doneId)
-      .then((info) => {
+      try {
+        const info = await window.api.cloudStatus(doneId)
         if (!alive) return
         setCloud(info)
         if (info && info.status !== 'ready') timer = window.setTimeout(poll, 2000)
-      })
-      .catch(() => alive && setCloud(null))
+      } catch (e) {
+        console.error('[cloud] status check failed', e)
+      }
+    }
+    ;(async () => {
+      try {
+        const info = await window.api.cloudShare(doneId)
+        if (!alive) return
+        setCloud(info)
+        if (info && info.status !== 'ready') timer = window.setTimeout(poll, 2000)
+      } catch (e) {
+        console.error('[cloud] could not start sharing', e)
+        if (alive) setCloud(null)
+      }
+    })()
     return () => {
       alive = false
       if (timer) window.clearTimeout(timer)
@@ -192,6 +204,29 @@ export function Result(): React.JSX.Element | null {
   }
 
   const { record } = state
+
+  // Printing: each press sends the settings' number of sheets to the printer.
+  const limit = settings.printMaxPerSession
+  const limitReached = limit > 0 && printedCount >= limit
+  const doPrint = async (): Promise<void> => {
+    if (printing || limitReached) return
+    setPrinting(true)
+    setPrintMsg(null)
+    const result = await printSession(record, settings)
+    setPrinting(false)
+    if (result.ok) {
+      countPrint(record.id)
+      setPrintedCount(printsUsed(record.id))
+    }
+    setPrintMsg({ ok: result.ok, text: result.message })
+  }
+  const printLabel = printing
+    ? 'Printing…'
+    : limitReached
+      ? 'All prints used'
+      : printedCount > 0
+        ? 'Print another'
+        : 'Print my photos'
 
   // Size the pictures so they ALWAYS leave room for the QR column.
   const aspect = record.width / record.height
@@ -230,7 +265,7 @@ export function Result(): React.JSX.Element | null {
               ) : (
                 <>
                   <div className="qr-card">
-                    <QrCode value={cloud.url} size={340} />
+                    <QrCode value={cloud.url} size={300} />
                   </div>
                   <div className="qr-title">Scan with your phone</div>
                   <div className="qr-sub">to download your strip and clip</div>
@@ -240,7 +275,11 @@ export function Result(): React.JSX.Element | null {
             </div>
           )}
 
+          {printMsg && <div className={`print-msg ${printMsg.ok ? 'ok' : 'bad'}`}>{printMsg.text}</div>}
+
           <div className="result-meta">
+            {limit > 0 && settings.printEnabled && !limitReached && `${limit - printedCount} print${limit - printedCount === 1 ? '' : 's'} left`}
+            {limit > 0 && settings.printEnabled && !limitReached && <br />}
             {record.width} × {record.height} px · {(record.bytes / 1024).toFixed(0)} KB · {state.ms} ms
             <br />✓ Saved on this computer
             {clipNote && (
@@ -257,6 +296,9 @@ export function Result(): React.JSX.Element | null {
         <Button label="Back" variant="secondary" onClick={() => nav.go({ name: 'edit' })} />
         {/* TEST AID: opens Windows Explorer with the saved file selected */}
         <Button label="Show file (test)" variant="secondary" onClick={() => window.api.showInFolder(record.stripPath)} />
+        {settings.printEnabled && (
+          <Button label={printLabel} disabled={printing || limitReached} onClick={doPrint} />
+        )}
         <Button
           label="New session"
           onClick={() => {

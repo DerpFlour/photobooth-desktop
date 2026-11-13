@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
@@ -13,6 +13,7 @@ import {
   startCloudQueue,
   testConnection
 } from './cloud'
+import { listPrinters, printSheet } from './print'
 import { getSettings, loadSettings, updateSettings } from './settings'
 import {
   cloudTokens,
@@ -216,6 +217,21 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('cloud:test', () => testConnection())
     ipcMain.handle('cloud:queue', () => queueSummary())
     ipcMain.handle('cloud:retry', () => retryNow())
+    ipcMain.handle('print:list', () => listPrinters(win))
+    ipcMain.handle('print:sheet', (_e, request: PrintRequest) => printSheet(request, win))
+    // Lets the screens read a saved picture (used to build print sheets).
+    ipcMain.handle('sessions:readFile', (_e, relativePath: string) => {
+      const full = resolveSessionFile(relativePath)
+      if (!full || !existsSync(full)) throw new Error('That file was not found.')
+      return readFileSync(full)
+    })
+    // Saves a print-ready sheet next to a session's other files and shows it.
+    ipcMain.handle('print:saveSheet', (_e, id: string, image: ArrayBuffer) => {
+      if (!getSession(id)) throw new Error('That session was not found.')
+      const target = join(sessionsDir(), id, 'print-sheet.jpg')
+      writeFileSync(target, Buffer.from(image))
+      shell.showItemInFolder(target)
+    })
 
     createWindow()
     app.on('activate', () => {

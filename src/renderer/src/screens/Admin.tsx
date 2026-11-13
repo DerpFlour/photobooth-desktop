@@ -7,6 +7,8 @@ import { ChoiceRow, NumberRow, TextRow, ToggleRow } from '../components/SettingR
 import { fileUrl } from '../config/assets'
 import { getLayoutById } from '../config/layouts'
 import { getTemplateById } from '../config/templates'
+import { printSession, printTestPage, saveSheetFor } from '../render/printing'
+import { PAPERS } from '../render/sheet'
 import { useNav } from '../state/nav'
 import { useSettings } from '../state/settings'
 
@@ -81,6 +83,9 @@ function AdminPanel(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
   const [cloudTest, setCloudTest] = useState<CloudTestResult | null>(null)
+  const [printers, setPrinters] = useState<PrinterEntry[]>([])
+  const [printNote, setPrintNote] = useState('')
+  const [printBusy, setPrintBusy] = useState(false)
   const [confirm, setConfirm] = useState<{
     title: string
     message: string
@@ -104,6 +109,25 @@ function AdminPanel(): React.JSX.Element {
   useEffect(() => {
     refresh()
   }, [refresh])
+  
+  const loadPrinters = useCallback(async () => {
+    try {
+      setPrinters(await window.api.listPrinters())
+    } catch {
+      setPrinters([])
+    }
+  }, [])
+  useEffect(() => {
+    if (tab === 'settings') loadPrinters()
+  }, [tab, loadPrinters])
+
+  const runPrint = async (job: () => Promise<PrintResult>): Promise<void> => {
+    setPrintBusy(true)
+    setPrintNote('Sending to the printer…')
+    const result = await job()
+    setPrintBusy(false)
+    setPrintNote(result.message)
+  }
 
   const copyLink = async (url: string): Promise<void> => {
     try {
@@ -202,7 +226,7 @@ function AdminPanel(): React.JSX.Element {
             {notice && <div className="notice" style={{ marginTop: 0, marginBottom: 12 }}>{notice}</div>}
             <div className="admin-grid">
               {sessions.map((s) => (
-                <button key={s.id} className="session-card" onClick={() => setSelected(s)}>
+                <button key={s.id} className="session-card" onClick={() => { setPrintNote(''); setSelected(s) }}>
                   <img src={fileUrl(s.thumbPath, s.createdAt)} style={{ aspectRatio: s.width / s.height }} alt="" draggable={false} />
                   <span>
                     {new Date(s.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
@@ -302,6 +326,54 @@ function AdminPanel(): React.JSX.Element {
               </button>
             </div>
 
+            <h2 className="group-title">Printing</h2>
+            <ToggleRow label="Guests can print" hint="Shows a Print button on the result screen" value={settings.printEnabled} onChange={(v) => update({ printEnabled: v })} />
+            <div className="row">
+              <div className="row-text">
+                <div className="row-label">Printer</div>
+                <div className="row-hint">Pick the printer for guest prints. Any printer installed in Windows appears here.</div>
+              </div>
+              <button className="chip" onClick={loadPrinters}>Refresh list</button>
+            </div>
+            <div className="pick-list">
+              <button className={`pick ${settings.printerName === '' ? 'selected' : ''}`} onClick={() => update({ printerName: '' })}>
+                Windows default printer{printers.find((p) => p.isDefault) ? ` (${printers.find((p) => p.isDefault)?.displayName})` : ''}
+              </button>
+              {printers.map((p) => (
+                <button key={p.name} className={`pick ${settings.printerName === p.name ? 'selected' : ''}`} onClick={() => update({ printerName: p.name })}>
+                  {p.displayName}
+                  {p.isDefault ? ' · default' : ''}
+                </button>
+              ))}
+              {printers.length === 0 && <div className="warn">No printers found. Install the printer in Windows, then press Refresh list.</div>}
+              {settings.printerName !== '' && printers.length > 0 && !printers.some((p) => p.name === settings.printerName) && (
+                <div className="warn">The saved printer &quot;{settings.printerName}&quot; isn&apos;t connected right now.</div>
+              )}
+            </div>
+            <ChoiceRow
+              label="Paper size"
+              hint="4R is 4×6 inch photo paper"
+              value={settings.printPaper}
+              options={Object.entries(PAPERS).map(([value, p]) => ({ value, label: p.label }))}
+              onChange={(v) => update({ printPaper: v })}
+            />
+            <ToggleRow label="Fill the sheet with copies of the strip" hint="A 2×6 strip prints twice side by side on 4×6 paper; you cut it in half" value={settings.printFillSheet} onChange={(v) => update({ printFillSheet: v })} />
+            <NumberRow label="Sheets per press" hint="How many sheets each press of Print prints" value={settings.printCopies} min={1} max={5} step={1} onChange={(v) => update({ printCopies: v })} />
+            <NumberRow label="Prints allowed per guest" hint="Times a guest can press Print. 0 = unlimited" value={settings.printMaxPerSession} min={0} max={10} step={1} onChange={(v) => update({ printMaxPerSession: v })} />
+            <NumberRow label="Safe margin" hint="0 = edge to edge. Raise it if the printer cuts off the edges" value={settings.printMarginMm} min={0} max={10} step={1} unit=" mm" onChange={(v) => update({ printMarginMm: v })} />
+            <ToggleRow label="Use the printer's own paper size" hint="Turn on if prints come out on the wrong paper (set 4×6 as the printer's default in Windows first)" value={settings.printUseDriverPaper} onChange={(v) => update({ printUseDriverPaper: v })} />
+            <div className="row">
+              <div className="row-text">
+                <div className="row-label">Test print</div>
+                <div className="row-hint" style={printNote ? { fontWeight: 700, color: 'var(--text)' } : undefined}>
+                  {printNote || 'Prints a test page with a border, ruler and cut line'}
+                </div>
+              </div>
+              <button className="chip" disabled={printBusy} onClick={() => runPrint(() => printTestPage(settings))}>
+                {printBusy ? 'Printing…' : 'Print test page'}
+              </button>
+            </div>
+
             <h2 className="group-title">Export</h2>
             <ChoiceRow label="Picture format" hint="JPEG is smaller; PNG is lossless" value={settings.exportFormat} options={[{ value: 'jpeg', label: 'JPEG' }, { value: 'png', label: 'PNG' }]} onChange={(v) => update({ exportFormat: v })} />
             <NumberRow label="JPEG quality" value={settings.exportQuality} min={70} max={100} step={5} onChange={(v) => update({ exportQuality: v })} />
@@ -358,9 +430,28 @@ function AdminPanel(): React.JSX.Element {
             {selected.cloud ? ` · online: ${selected.cloud.status}` : ''}
             {selected.cloud?.error ? ` (${selected.cloud.error})` : ''}
           </div>
+          {printNote && <div className="modal-text">{printNote}</div>}
           <div className="modal-buttons">
             <Button label="Close" variant="secondary" onClick={() => setSelected(null)} />
             <Button label="Show file" variant="secondary" onClick={() => window.api.showInFolder(selected.stripPath)} />
+            <Button
+              label={printBusy ? 'Printing…' : 'Print'}
+              variant="secondary"
+              disabled={printBusy}
+              onClick={() => runPrint(() => printSession(selected, settings))}
+            />
+            <Button
+              label="Save print sheet"
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  await saveSheetFor(selected, settings)
+                  setPrintNote('Print sheet saved. Its folder is open: print it from any program.')
+                } catch (e) {
+                  setPrintNote(e instanceof Error ? e.message : String(e))
+                }
+              }}
+            />
             {selected.cloud && (
               <Button
                 label="Copy link"

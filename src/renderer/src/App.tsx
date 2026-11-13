@@ -17,7 +17,10 @@ import { TemplateSelect } from './screens/TemplateSelect'
 
 // The screens update instantly, but the connection to the booth program only
 // updates when the app is fully restarted. If they don't match, say so.
-const REQUIRED_API = ['cloudShare', 'cloudStatus', 'cloudTest', 'cloudQueue', 'cloudRetry'] as const
+const REQUIRED_API = [
+  'cloudShare', 'cloudStatus', 'cloudTest', 'cloudQueue', 'cloudRetry',
+  'listPrinters', 'printSheet', 'readSessionFile', 'saveSheetFile'
+] as const
 
 function missingApi(): string[] {
   const api = window.api as unknown as Record<string, unknown> | undefined

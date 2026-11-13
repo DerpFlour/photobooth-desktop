@@ -334,14 +334,6 @@ button { font: inherit; cursor: pointer; border: none; }
 .detail-row { display: flex; gap: 40px; align-items: center; justify-content: center; }
 .detail-row img { max-height: 620px; max-width: 900px; border-radius: 16px; }
 
-/* ---------- behind-the-scenes clip ---------- */
-.rec {
-  position: absolute; top: 22px; left: 22px; display: flex; align-items: center; gap: 14px;
-  background: rgba(0, 0, 0, 0.6); color: #fff; padding: 12px 26px; border-radius: 999px;
-  font-size: 28px; font-weight: 700; pointer-events: none;
-}
-.rec i { width: 22px; height: 22px; border-radius: 50%; background: #ff3b3b; animation: blink 1s infinite; }
-@keyframes blink { 50% { opacity: 0.25; } }
 
 /* ---------- result: strip + animated clip side by side ---------- */
 .result-body { gap: 60px; }
@@ -371,3 +363,9 @@ input { user-select: text; -webkit-user-select: text; }
 }
 .text-input:focus { outline: none; border-color: var(--primary); }
 .chip:disabled { opacity: 0.4; }
+
+/* ---------- printing ---------- */
+.pick-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.print-msg { font-size: 26px; font-weight: 700; line-height: 1.35; margin: 4px 0 14px; text-align: center; }
+.print-msg.ok { color: #2f855a; }
+.print-msg.bad { color: #c53030; }

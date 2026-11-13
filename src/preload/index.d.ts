@@ -22,6 +22,15 @@ declare global {
     cloudBaseUrl: string
     cloudBoothKey: string // the screens only ever see '********' or ''
     cloudRetentionDays: number
+    // printing
+    printEnabled: boolean
+    printerName: string // '' = the Windows default printer
+    printPaper: string // '4r' | '5x7' | 'a6' | 'a4' | 'letter'
+    printCopies: number // sheets per press of the Print button
+    printFillSheet: boolean // fill the sheet with copies of the strip
+    printMarginMm: number // white border (0 = edge to edge)
+    printMaxPerSession: number // 0 = unlimited
+    printUseDriverPaper: boolean // let the printer choose the paper size
     // export
     exportFormat: 'jpeg' | 'png'
     exportQuality: number
@@ -65,7 +74,25 @@ declare global {
     ok: boolean
     message: string
   }
+  interface PrinterEntry {
+    name: string // the system name Windows uses
+    displayName: string
+    description: string
+    isDefault: boolean
+  }
 
+  interface PrintRequest {
+    image: ArrayBuffer // the finished print sheet (JPEG)
+    widthMm: number
+    heightMm: number
+    copies: number
+  }
+
+  interface PrintResult {
+    ok: boolean
+    message: string
+    printer?: string
+  }
   // One saved guest session. Paths are relative to the app's data folder.
   interface SessionRecord {
     id: string
@@ -127,6 +154,10 @@ declare global {
     cloudTest(): Promise<CloudTestResult>
     cloudQueue(): Promise<CloudQueue>
     cloudRetry(): Promise<void>
+    listPrinters(): Promise<PrinterEntry[]>
+    printSheet(request: PrintRequest): Promise<PrintResult>
+    readSessionFile(relativePath: string): Promise<ArrayBuffer>
+    saveSheetFile(id: string, image: ArrayBuffer): Promise<void>
   }
 
   interface Window {

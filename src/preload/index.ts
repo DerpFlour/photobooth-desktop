@@ -21,7 +21,11 @@ const api: PhotoboothApi = {
   cloudStatus: (id) => ipcRenderer.invoke('cloud:status', id),
   cloudTest: () => ipcRenderer.invoke('cloud:test'),
   cloudQueue: () => ipcRenderer.invoke('cloud:queue'),
-  cloudRetry: () => ipcRenderer.invoke('cloud:retry')
+  cloudRetry: () => ipcRenderer.invoke('cloud:retry'),
+  listPrinters: () => ipcRenderer.invoke('print:list'),
+  printSheet: (request) => ipcRenderer.invoke('print:sheet', request),
+  readSessionFile: (relativePath) => ipcRenderer.invoke('sessions:readFile', relativePath),
+  saveSheetFile: (id, image) => ipcRenderer.invoke('print:saveSheet', id, image)
 }
 
 contextBridge.exposeInMainWorld('api', api)
