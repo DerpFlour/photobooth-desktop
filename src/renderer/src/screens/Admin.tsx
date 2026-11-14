@@ -408,7 +408,7 @@ function AdminPanel(): React.JSX.Element {
             <NumberRow label="Reset to home after" hint="0 = never" value={settings.idleTimeoutSeconds} min={0} max={600} step={15} unit=" s" onChange={(v) => update({ idleTimeoutSeconds: v })} />
             <NumberRow label="Warning countdown" value={settings.idleWarningSeconds} min={5} max={30} step={5} unit=" s" onChange={(v) => update({ idleWarningSeconds: v })} />
             <ToggleRow label="Show the “View recent sessions” button" hint="Guests can look at other guests' strips. Turn off to keep photos private" value={settings.showRecentOnHome} onChange={(v) => update({ showRecentOnHome: v })} />
-            <NumberRow label="Sessions shown in the gallery" hint="The newest sessions only" value={settings.homeGalleryCount} min={4} max={60} step={4} onChange={(v) => update({ homeGalleryCount: v })} />
+            <NumberRow label="Sessions shown in the gallery" hint="The newest sessions, up to 12. Guests swipe to see older ones" value={Math.min(12, settings.homeGalleryCount)} min={4} max={12} step={4} onChange={(v) => update({ homeGalleryCount: v })} />
 
             <h2 className="group-title">Storage</h2>
             <ToggleRow label="Keep original full-size photos" hint="Uses about 20-30 MB per session" value={settings.keepOriginalPhotos} onChange={(v) => update({ keepOriginalPhotos: v })} />

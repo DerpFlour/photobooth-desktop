@@ -453,6 +453,7 @@ function FrameWizard(props: {
   const [picked, setPicked] = useState<{ file: string; bytes: ArrayBuffer; url: string } | null>(null)
   const [check, setCheck] = useState<{ ok: boolean; message: string } | null>(null)
   const [name, setName] = useState('')
+  const [category, setCategory] = useState('My frames')
   const [busy, setBusy] = useState(false)
 
   const layout = layouts.find((l) => l.id === layoutId) ?? layouts[0]
@@ -504,7 +505,8 @@ function FrameWizard(props: {
         file,
         backgroundColor: '#FFFFFF',
         slotColor: '#E8EFF9',
-        textColor: '#0F2A5C'
+        textColor: '#0F2A5C',
+        category: category.trim() || 'My frames'
       }
       if (await onSave({ ...content, customTemplates: [...content.customTemplates, template] }, `Added "${template.name}".`)) {
         onClose()
@@ -547,10 +549,19 @@ function FrameWizard(props: {
         </div>
 
         {picked && (
-          <div className="row">
-            <div className="row-text"><div className="row-label">4. Name</div></div>
-            <input className="text-input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
-          </div>
+          <>
+            <div className="row">
+              <div className="row-text"><div className="row-label">4. Name</div></div>
+              <input className="text-input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="row">
+              <div className="row-text">
+                <div className="row-label">5. Category</div>
+                <div className="row-hint">Frames are grouped by category on the guest screen. Type a new one, or reuse a name like Light.</div>
+              </div>
+              <input className="text-input" value={category} maxLength={24} onChange={(e) => setCategory(e.target.value)} />
+            </div>
+          </>
         )}
 
         {check && <div className={`cm-check ${check.ok ? 'ok' : 'bad'}`}>{check.message}</div>}

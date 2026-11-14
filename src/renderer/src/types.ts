@@ -24,6 +24,7 @@ export type TemplateConfig = {
   footerText: string
   overlays?: Record<string, string>
   custom?: boolean // imported by the admin (can be deleted)
+  category?: string // the group shown in the category picker
 }
 
 // A photo taken by the camera. It lives in memory until the session ends.

@@ -21,13 +21,16 @@ export function SampleStrip({ variant, name }: { variant: StripVariant; name: st
       'radial-gradient(ellipse 46% 40% at 50% 104%, rgba(255,255,255,0.5) 99%, transparent 100%), ' +
       `linear-gradient(145deg, ${look.a}, ${look.b})`
   }
+  const label = name.toLowerCase()
+  // Long names get smaller letters so they always fit on the strip.
+  const size = Math.max(12, Math.min(28, Math.floor(150 / (label.length * 0.86))))
   return (
     <div className="strip-card" style={{ background: look.bg, borderColor: look.edge }}>
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="strip-slot" style={slot} />
       ))}
-      <div className="strip-name" style={{ color: look.ink }}>
-        {name.toLowerCase()}
+      <div className="strip-name" style={{ color: look.ink, fontSize: size }}>
+        {label}
       </div>
     </div>
   )

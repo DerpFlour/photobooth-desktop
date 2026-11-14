@@ -1,27 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useStageScale } from '../components/Stage'
 import { RecentStrip, SampleStrip, StripVariant } from '../components/SampleStrip'
 import { useNav } from '../state/nav'
 import { useSession } from '../state/session'
 import { useSettings } from '../state/settings'
 
-type Spot = { left: number; top: number; tilt: number; dur: number; delay: number; variant: StripVariant }
-
-// Where the six strips sit on the 1920x1080 design. A tilt of 14 degrees is a
-// 76 degree angle (almost the "75" asked for). They sit in the side margins,
-// well clear of the centered text and buttons, and they never overlap each other.
+// x = how far the strip's outer edge sits from that side of the WINDOW (design
+// pixels; negative = partly off-screen). top = the strip's top on the 1920x1080
+// design. A tilt of 14 degrees is a 76 degree angle. The strips are 180 x 540.
+type Spot = { side: 'left' | 'right'; x: number; top: number; tilt: number; dur: number; delay: number; variant: StripVariant }
 const SPOTS: Spot[] = [
-  { left: -115, top: -30, tilt: 14, dur: 6.2, delay: 0, variant: 'navy' },
-  { left: 150, top: 330, tilt: 14, dur: 5.4, delay: -2, variant: 'sky' },
-  { left: -110, top: 650, tilt: 14, dur: 6.8, delay: -4, variant: 'ocean' },
-  { left: 1870, top: 40, tilt: -14, dur: 5.8, delay: -1, variant: 'ocean' },
-  { left: 1630, top: 360, tilt: -14, dur: 6.5, delay: -3, variant: 'cloud' },
-  { left: 1890, top: 640, tilt: -14, dur: 5.2, delay: -5, variant: 'navy' }
+  { side: 'left', x: -130, top: -70, tilt: 14, dur: 6.2, delay: 0, variant: 'navy' },
+  { side: 'left', x: 170, top: 360, tilt: 14, dur: 5.4, delay: -2, variant: 'sky' },
+  { side: 'left', x: -135, top: 690, tilt: 14, dur: 6.8, delay: -4, variant: 'ocean' },
+  { side: 'right', x: -135, top: -30, tilt: -14, dur: 5.8, delay: -1, variant: 'ocean' },
+  { side: 'right', x: 175, top: 330, tilt: -14, dur: 6.5, delay: -3, variant: 'cloud' },
+  { side: 'right', x: -140, top: 670, tilt: -14, dur: 5.2, delay: -5, variant: 'navy' }
 ]
 
 export function Home(): React.JSX.Element {
   const nav = useNav()
   const { settings } = useSettings()
   const { resetSession } = useSession()
+  const scale = useStageScale()
   const hold = useRef<number | null>(null)
   const [recent, setRecent] = useState<SessionRecord[]>([])
 
@@ -73,18 +75,32 @@ export function Home(): React.JSX.Element {
 
   return (
     <div className="screen home">
-      {/* The bobbing strips: the outer box floats up and down, the inner one is tilted. */}
-      {SPOTS.map((spot, i) => (
-        <div
-          key={i}
-          className="strip-bob"
-          style={{ left: spot.left, top: spot.top, animationDuration: `${spot.dur}s`, animationDelay: `${spot.delay}s` }}
-        >
-          <div className="strip-tilt" style={{ transform: `rotate(${spot.tilt}deg)` }}>
-            {recent[i] ? <RecentStrip record={recent[i]} /> : <SampleStrip variant={spot.variant} name={name} />}
-          </div>
-        </div>
-      ))}
+      {/* The strips live on their own layer behind everything, fixed to the real
+          window edges (not the 1920x1080 design area), so they fill any window
+          shape with no cut-off edge. */}
+      {createPortal(
+        <div className="decor">
+          {SPOTS.map((spot, i) => (
+            <div
+              key={i}
+              className="strip-bob"
+              style={{
+                ...(spot.side === 'left' ? { left: spot.x * scale } : { right: spot.x * scale }),
+                top: `calc(50% + ${(spot.top - 540) * scale}px)`,
+                animationDuration: `${spot.dur}s`,
+                animationDelay: `${spot.delay}s`
+              }}
+            >
+              <div style={{ width: 180 * scale, height: 540 * scale, transform: `rotate(${spot.tilt}deg)` }}>
+                <div style={{ width: 180, height: 540, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                  {recent[i] ? <RecentStrip record={recent[i]} /> : <SampleStrip variant={spot.variant} name={name} />}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
 
       <div className="home2">
         <h1

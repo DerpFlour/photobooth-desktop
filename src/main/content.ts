@@ -67,6 +67,7 @@ function sanitize(raw: unknown): ContentFile {
     customTemplates.push({
       id,
       name: text(t.name, 40, 'My frame'),
+      category: text(t.category, 24, 'My frames'),
       layoutId,
       file,
       backgroundColor: colour(t.backgroundColor, '#FFFFFF'),

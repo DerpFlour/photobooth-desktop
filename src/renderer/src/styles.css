@@ -391,7 +391,7 @@ input { user-select: text; -webkit-user-select: text; }
 }
 .brand {
   margin: 0; line-height: 1; letter-spacing: 0.06em; text-indent: 0.06em;
-  font-family: 'Segoe UI Light', 'Segoe UI', system-ui, sans-serif; font-weight: 300;
+  font-family: 'Yipes', 'Segoe UI', system-ui, sans-serif; font-weight: 300;
   color: var(--primary-dark); white-space: nowrap;
 }
 .brand-rule { width: 96px; height: 4px; border-radius: 4px; margin: 34px 0 32px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
@@ -410,13 +410,13 @@ input { user-select: text; -webkit-user-select: text; }
 
 /* ---------- side strips (they float up and down slowly) ---------- */
 .strip-bob { position: absolute; z-index: 1; animation: bob 6s ease-in-out infinite; pointer-events: none; will-change: transform; }
-@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-50px); } }
 .strip-tilt { transform-origin: center center; }
 .strip-card {
   position: relative; width: 150px; height: 450px; padding: 12px 12px 54px;
   display: flex; flex-direction: column; gap: 10px; overflow: hidden;
   border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 22px 44px rgba(15, 42, 92, 0.2);
+  box-shadow: 0 22px 44px rgba(15, 42, 92, 0.3);
 }
 .strip-slot { flex: 1; border-radius: 9px; }
 .strip-name { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 22px; font-weight: 300; letter-spacing: 0.22em; text-indent: 0.22em; }
@@ -449,3 +449,65 @@ input { user-select: text; -webkit-user-select: text; }
 .cm-check.ok { color: #2f855a; }
 .cm-check.bad { color: #c53030; }
 .chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ================= Fixes: cut-off previews, swipe rows, bigger strips ================= */
+
+/* A preview must NEVER be squashed: its inner pieces are placed with fixed
+   sizes, so squashing the box would cut the picture off. */
+.lp { flex-shrink: 0; }
+
+/* The page itself is see-through, so the home strips (on a layer behind it,
+   fixed to the real window edges) show through on every window shape. */
+#root { background: transparent; z-index: 1; }
+.decor { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.decor .strip-bob { position: absolute; }
+
+/* The strips are 20% bigger. */
+.strip-card { width: 200px; height: 600px; padding: 14px 14px 64px; gap: 14px; border-radius: 18px; }
+.strip-slot { border-radius: 10px; }
+.strip-name { bottom: 18px; letter-spacing: 0.18em; text-indent: 0.18em; white-space: nowrap; }
+
+/* ---------- swipe rows (no scrollbar) ---------- */
+.swipe-wrap { position: relative; width: 100%; height: 100%; }
+.swipe {
+  display: flex; align-items: center; gap: 36px; height: 100%;
+  overflow-x: auto; overflow-y: hidden; padding: 24px 90px;
+  scrollbar-width: none; touch-action: none; cursor: grab;
+}
+.swipe::-webkit-scrollbar { display: none; }
+.swipe > * { flex: 0 0 auto; }
+.swipe > :first-child { margin-left: auto; }  /* a few cards sit in the middle... */
+.swipe > :last-child { margin-right: auto; }  /* ...a long row starts at the left */
+.swipe-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 84px; height: 84px; border-radius: 50%; padding: 0 0 8px;
+  background: rgba(255, 255, 255, 0.94); color: var(--primary-dark); font-size: 60px; line-height: 1;
+  box-shadow: 0 8px 24px rgba(15, 42, 92, 0.2);
+}
+.swipe-arrow.left { left: 16px; }
+.swipe-arrow.right { right: 16px; }
+
+/* ---------- layout picker ---------- */
+.layout-stage { position: absolute; top: 140px; bottom: 160px; left: 0; right: 0; }
+
+/* ---------- frame picker ---------- */
+.tpl2 { position: absolute; top: 140px; bottom: 160px; left: 90px; right: 0; display: flex; }
+.tpl2-left { width: 660px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.tpl2-left .name { font-size: 40px; font-weight: 800; color: var(--text); text-align: center; }
+.tpl2-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tpl2-right h2 { margin: 0 0 14px 20px; font-size: 52px; font-weight: 900; color: var(--primary-dark); }
+.tpl2-chips { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 4px 20px; }
+.tpl2-chips .chip { font-size: 28px; padding: 14px 32px; }
+.tpl2-carousel { flex: 1; min-height: 0; }
+.frame-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: var(--card); padding: 18px; border-radius: 28px; border: 6px solid transparent;
+  box-shadow: 0 10px 28px rgba(15, 42, 92, 0.1);
+}
+.frame-card.selected { border-color: var(--primary); }
+.frame-card span { font-size: 26px; font-weight: 700; color: var(--text); }
+
+/* ---------- recent sessions ---------- */
+.gal-stage { position: absolute; top: 130px; bottom: 175px; left: 0; right: 0; }
+.gal-card img { height: 640px; }
+.gal-empty { text-align: center; font-size: 38px; color: var(--muted); padding-top: 240px; }

@@ -98,6 +98,7 @@ declare global {
     id: string // always starts with "frame-"
     name: string
     layoutId: string // the one layout this frame was made for
+    category: string // the group it appears under on the guest screen
     file: string // the stored picture
     backgroundColor: string
     slotColor: string
