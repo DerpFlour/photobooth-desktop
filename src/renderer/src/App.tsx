@@ -4,11 +4,13 @@ import { IdleWatcher } from './components/IdleWatcher'
 import { Stage } from './components/Stage'
 import { NavProvider, useNav } from './state/nav'
 import { SessionProvider } from './state/session'
-import { SettingsProvider } from './state/settings'
+import { SettingsProvider, useSettings } from './state/settings'
+import { applyTheme } from './theme'
 import { Admin } from './screens/Admin'
 import { CameraSetup } from './screens/CameraSetup'
 import { Capture } from './screens/Capture'
 import { Edit } from './screens/Edit'
+import { Gallery } from './screens/Gallery'
 import { Home } from './screens/Home'
 import { LayoutSelect } from './screens/LayoutSelect'
 import { Result } from './screens/Result'
@@ -30,19 +32,30 @@ function missingApi(): string[] {
 
 function Router(): React.JSX.Element | null {
   const { screen } = useNav()
+  const { settings } = useSettings()
 
-  // The area around the 1920x1080 design takes the current screen's color,
-  // so the dark camera screen fills the whole window at any size.
+  // Colors for the chosen theme (the booth name and look live in the settings).
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--page-bg',
-      screen.name === 'capture' ? '#1a1216' : '#fff5f8'
-    )
-  }, [screen.name])
+    applyTheme(settings.theme)
+  }, [settings.theme])
+
+  // The area around the 1920x1080 design takes the screen's own background,
+  // so it fills the whole window at any size.
+  useEffect(() => {
+    const background =
+      screen.name === 'capture'
+        ? 'var(--capture-bg)'
+        : screen.name === 'home'
+          ? 'linear-gradient(180deg, var(--grad-a), var(--grad-b))'
+          : 'var(--bg)'
+    document.documentElement.style.setProperty('--page-bg', background)
+  }, [screen.name, settings.theme])
 
   switch (screen.name) {
     case 'home':
       return <Home />
+    case 'gallery':
+      return <Gallery />
     case 'layout':
       return <LayoutSelect />
     case 'template':

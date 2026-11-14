@@ -22,6 +22,12 @@ declare global {
     cloudBaseUrl: string
     cloudBoothKey: string // the screens only ever see '********' or ''
     cloudRetentionDays: number
+    // branding (the look of the booth)
+    brandName: string
+    brandInstructions: string
+    brandButton: string
+    theme: string // 'calm' | 'sky' | 'rose'
+    homeStrips: string // 'samples' | 'recent'
     // printing
     printEnabled: boolean
     printerName: string // '' = the Windows default printer

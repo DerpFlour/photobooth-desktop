@@ -23,7 +23,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cloudBaseUrl: '', // the website address from Vercel
   cloudBoothKey: '', // the BOOTH_API_KEY (never shown on screen)
   cloudRetentionDays: 5, // how long guest links stay online (1-30)
-    // printing
+  // branding (the look of the booth)
+  brandName: 'Click',
+  brandInstructions: 'Choose a layout, strike a pose, and take your photos home.',
+  brandButton: 'Take pictures',
+  theme: 'calm', // calm | sky | rose
+  homeStrips: 'samples', // 'samples' = designed examples, 'recent' = guests' latest strips
+  // printing
   printEnabled: true,
   printerName: '', // '' = use whichever printer is the Windows default
   printPaper: '4r', // 4R = 4x6 inch photo paper

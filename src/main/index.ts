@@ -61,7 +61,7 @@ function createWindow(): void {
     height: 720,
     show: false,
     title: 'Photo Booth',
-    backgroundColor: '#FFF5F8',
+    backgroundColor: '#F3F8FF',
     autoHideMenuBar: true,
     webPreferences: { preload, sandbox: false, contextIsolation: true, nodeIntegration: false }
   })

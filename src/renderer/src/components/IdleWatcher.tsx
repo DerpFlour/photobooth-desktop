@@ -66,7 +66,7 @@ export function IdleWatcher(): React.JSX.Element | null {
   if (secondsLeft === null) return null
   return (
     <Overlay
-      background="rgba(30, 10, 20, 0.65)"
+      background="rgba(8, 20, 45, 0.7)"
       zIndex={2000}
       onPointerDown={() => {
         lastTouch.current = Date.now()

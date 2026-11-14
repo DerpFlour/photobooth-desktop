@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext, useMemo, useState } from 'react'
 // Which screen is showing. A tiny router: no URLs needed in a kiosk.
 export type Screen =
   | { name: 'home' }
+  | { name: 'gallery' }
   | { name: 'layout' }
   | { name: 'template' }
   | { name: 'capture'; retake?: number } // retake = slot number to redo

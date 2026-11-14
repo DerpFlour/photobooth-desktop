@@ -9,6 +9,7 @@ import { getLayoutById } from '../config/layouts'
 import { getTemplateById } from '../config/templates'
 import { printSession, printTestPage, saveSheetFor } from '../render/printing'
 import { PAPERS } from '../render/sheet'
+import { THEMES } from '../theme'
 import { useNav } from '../state/nav'
 import { useSettings } from '../state/settings'
 
@@ -267,6 +268,25 @@ function AdminPanel(): React.JSX.Element {
             )}
             {notice && <div className="notice" style={{ marginTop: 0, marginBottom: 12 }}>{notice}</div>}
 
+            <h2 className="group-title">Branding</h2>
+            <TextRow label="Booth name" hint="The logo on the home screen" value={settings.brandName} placeholder="Click" onSave={(v) => update({ brandName: v || 'Click' })} />
+            <TextRow label="Instructions" hint="The line under the logo" value={settings.brandInstructions} onSave={(v) => update({ brandInstructions: v })} />
+            <TextRow label="Main button text" hint="The big button guests press" value={settings.brandButton} placeholder="Take pictures" onSave={(v) => update({ brandButton: v || 'Take pictures' })} />
+            <ChoiceRow
+              label="Color theme"
+              hint="Recolors every screen instantly"
+              value={settings.theme}
+              options={Object.entries(THEMES).map(([value, t]) => ({ value, label: t.label }))}
+              onChange={(v) => update({ theme: v })}
+            />
+            <ChoiceRow
+              label="Strips on the home screen sides"
+              hint="Samples are designed examples. Recent shows guests' latest strips (strip layouts only)."
+              value={settings.homeStrips}
+              options={[{ value: 'samples', label: 'Samples' }, { value: 'recent', label: 'Recent' }]}
+              onChange={(v) => update({ homeStrips: v })}
+            />
+
             <h2 className="group-title">Capture</h2>
             <div className="row">
               <div className="row-text">
@@ -383,8 +403,8 @@ function AdminPanel(): React.JSX.Element {
             <ToggleRow label="Fullscreen" hint="Also: F11 on the keyboard" value={settings.fullscreen} onChange={(v) => update({ fullscreen: v })} />
             <NumberRow label="Reset to home after" hint="0 = never" value={settings.idleTimeoutSeconds} min={0} max={600} step={15} unit=" s" onChange={(v) => update({ idleTimeoutSeconds: v })} />
             <NumberRow label="Warning countdown" value={settings.idleWarningSeconds} min={5} max={30} step={5} unit=" s" onChange={(v) => update({ idleWarningSeconds: v })} />
-            <ToggleRow label="Show recent strips on the home screen" hint="Turn off to keep guests' photos private" value={settings.showRecentOnHome} onChange={(v) => update({ showRecentOnHome: v })} />
-            <NumberRow label="Strips shown on home" value={settings.homeGalleryCount} min={0} max={20} step={1} onChange={(v) => update({ homeGalleryCount: v })} />
+            <ToggleRow label="Show the “View recent sessions” button" hint="Guests can look at other guests' strips. Turn off to keep photos private" value={settings.showRecentOnHome} onChange={(v) => update({ showRecentOnHome: v })} />
+            <NumberRow label="Sessions shown in the gallery" hint="The newest sessions only" value={settings.homeGalleryCount} min={4} max={60} step={4} onChange={(v) => update({ homeGalleryCount: v })} />
 
             <h2 className="group-title">Storage</h2>
             <ToggleRow label="Keep original full-size photos" hint="Uses about 20-30 MB per session" value={settings.keepOriginalPhotos} onChange={(v) => update({ keepOriginalPhotos: v })} />
@@ -469,7 +489,7 @@ function AdminPanel(): React.JSX.Element {
 
       {/* ------------- Change PIN ------------- */}
       {pinStep && (
-        <Overlay background="#fff5f8" zIndex={1500}>
+        <Overlay background="var(--bg)" zIndex={1500}>
           <PinPad key={pinStep} length={4} title="Change PIN" message={pinMsg} onComplete={onNewPin} onCancel={() => setPinStep(null)} />
         </Overlay>
       )}
