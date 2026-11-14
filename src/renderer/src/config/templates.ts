@@ -1,7 +1,10 @@
-import { TemplateConfig } from '../types'
+import { getContent } from '../state/content'
+import { fileUrl } from './assets'
 import { frameUrl } from './assets'
+import { TemplateConfig } from '../types'
 
-export const TEMPLATES: TemplateConfig[] = [
+// The frames that ship with the app. They can be switched off, not deleted.
+export const BUILT_IN_TEMPLATES: TemplateConfig[] = [
   // ---- Click frames (transparent PNG artwork) ----
   {
     id: 'navy', name: 'Navy', layoutIds: ['strip-4', 'grid-8'],
@@ -29,7 +32,7 @@ export const TEMPLATES: TemplateConfig[] = [
   { id: 'sky-solid', name: 'Sky Simple', layoutIds: 'all', backgroundColor: '#CFE3FA', slotColor: '#FFFFFF', textColor: '#0F2A5C', footerText: 'click' },
   { id: 'white-solid', name: 'Clean White', layoutIds: 'all', backgroundColor: '#FFFFFF', slotColor: '#E8EFF9', textColor: '#0F2A5C', footerText: 'click' },
 
-  // ---- Earlier pink designs: hidden for now ----
+  // ---- Earlier pink designs: off by default (switch them on in Admin > Content) ----
   {
     id: 'cherry', name: 'Cherry Pop', layoutIds: ['strip-4', 'grid-8'], enabled: false,
     backgroundColor: '#FFC2D6', slotColor: '#FFFFFF', textColor: '#B0305F', footerText: '',
@@ -48,16 +51,53 @@ export const TEMPLATES: TemplateConfig[] = [
   { id: 'lilac', name: 'Lilac Dream', layoutIds: ['strip-4'], enabled: false, backgroundColor: '#DCCBFF', slotColor: '#FFFFFF', textColor: '#5B3FA8', footerText: 'dreamy' }
 ]
 
-// Finds any template, even a hidden one (older sessions may use it).
+// Built-in + imported frames, with the admin's on/off switches applied.
+// Rebuilt only when the content changes, so the list is stable between renders.
+let cachedFor: ContentFile | null = null
+let cached: TemplateConfig[] = []
+
+export function getAllTemplates(): TemplateConfig[] {
+  const content = getContent()
+  if (cachedFor !== content) {
+    cached = [
+      ...BUILT_IN_TEMPLATES.map((t) => ({
+        ...t,
+        enabled: content.templateEnabled[t.id] ?? t.enabled !== false
+      })),
+      ...content.customTemplates.map(
+        (c): TemplateConfig => ({
+          id: c.id,
+          name: c.name,
+          layoutIds: [c.layoutId],
+          backgroundColor: c.backgroundColor,
+          slotColor: c.slotColor,
+          textColor: c.textColor,
+          footerText: '',
+          overlays: { [c.layoutId]: c.file },
+          enabled: content.templateEnabled[c.id] ?? true,
+          custom: true
+        })
+      )
+    ]
+    cachedFor = content
+  }
+  return cached
+}
+
+// Finds any template, even a switched-off one (older sessions may use it).
 export const getTemplateById = (id: string | null | undefined): TemplateConfig | undefined =>
-  TEMPLATES.find((t) => t.id === id)
+  getAllTemplates().find((t) => t.id === id)
 
 // Only templates guests may pick, that support the chosen layout.
 export const getTemplatesForLayout = (layoutId: string): TemplateConfig[] =>
-  TEMPLATES.filter((t) => t.enabled !== false && (t.layoutIds === 'all' || t.layoutIds.includes(layoutId)))
+  getAllTemplates().filter(
+    (t) => t.enabled !== false && (t.layoutIds === 'all' || t.layoutIds.includes(layoutId))
+  )
 
 // The frame PNG's address for this template + layout, if it has one.
+// Imported frames are named "frame-....png" and live in the data folder.
 export const overlayFor = (template: TemplateConfig | undefined, layoutId: string): string | undefined => {
-  const fileName = template?.overlays?.[layoutId]
-  return fileName ? frameUrl(fileName) : undefined
+  const name = template?.overlays?.[layoutId]
+  if (!name) return undefined
+  return name.startsWith('frame-') ? fileUrl(`frames/${name}`) : frameUrl(name)
 }

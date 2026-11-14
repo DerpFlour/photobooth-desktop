@@ -23,7 +23,7 @@ export type TemplateConfig = {
   textColor: string
   footerText: string
   overlays?: Record<string, string>
-  enabled?: boolean // false = hidden from guests (still used by old sessions)
+  custom?: boolean // imported by the admin (can be deleted)
 }
 
 // A photo taken by the camera. It lives in memory until the session ends.

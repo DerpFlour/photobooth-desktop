@@ -25,7 +25,12 @@ const api: PhotoboothApi = {
   listPrinters: () => ipcRenderer.invoke('print:list'),
   printSheet: (request) => ipcRenderer.invoke('print:sheet', request),
   readSessionFile: (relativePath) => ipcRenderer.invoke('sessions:readFile', relativePath),
-  saveSheetFile: (id, image) => ipcRenderer.invoke('print:saveSheet', id, image)
+  saveSheetFile: (id, image) => ipcRenderer.invoke('print:saveSheet', id, image),
+  contentGet: () => ipcRenderer.invoke('content:get'),
+  contentSet: (content) => ipcRenderer.invoke('content:set', content),
+  contentPickPng: () => ipcRenderer.invoke('content:pickPng'),
+  contentStoreFrame: (bytes) => ipcRenderer.invoke('content:storeFrame', bytes),
+  contentSaveGuide: (name, bytes) => ipcRenderer.invoke('content:saveGuide', name, bytes)
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -38,9 +38,13 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 
 // Turns a stored relative path into a real file path, but ONLY inside the
 // sessions folder. Anything else returns null (blocks "../" tricks).
+export const framesDir = (): string => join(userRoot(), 'frames')
+
 export function resolveSessionFile(relativePath: string): string | null {
   const full = normalize(join(userRoot(), relativePath))
-  return full.startsWith(sessionsDir() + sep) ? full : null
+  // Only the sessions folder and the imported-frames folder can be read.
+  const allowed = full.startsWith(sessionsDir() + sep) || full.startsWith(framesDir() + sep)
+  return allowed ? full : null
 }
 
 export function saveSession(input: SessionSaveInput): SessionRecord {

@@ -22,6 +22,8 @@ export type Sheet = { canvas: HTMLCanvasElement; copies: number; widthMm: number
 //  - a 2x6 strip fills a 4x6 sheet TWICE, side by side (cut down the middle)
 //  - an 8-photo layout fills the whole 4x6 sheet by itself
 //  - bigger paper (A4...) gets as many copies as fit
+//  - a landscape layout on portrait paper (or the reverse) is turned a
+//    quarter turn when that lets it print bigger
 // natW/natH is the strip's natural size at 300 dpi.
 export function buildSheet(o: {
   strip: ImageBitmap
@@ -43,24 +45,43 @@ export function buildSheet(o: {
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
 
-  // How many copies fit on the paper, edge to edge.
-  const cols = o.fill ? Math.max(1, Math.floor(W / o.natW)) : 1
-  const rows = o.fill ? Math.max(1, Math.floor(H / o.natH)) : 1
-
-  // Shrink the whole block if a safe margin is wanted (or the strip is too big).
   const m = mmToPx(o.marginMm)
-  const scale = Math.min(1, (W - 2 * m) / (cols * o.natW), (H - 2 * m) / (rows * o.natH))
-  const cw = o.natW * scale
-  const ch = o.natH * scale
-  const x0 = (W - cols * cw) / 2
-  const y0 = (H - rows * ch) / 2
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      ctx.drawImage(o.strip, x0 + c * cw, y0 + r * ch, cw, ch)
+  // For a copy of size w x h: how many fit edge to edge, and how much the
+  // block must shrink to respect the safe margin (or a too-big strip).
+  const plan = (w: number, h: number): { cols: number; rows: number; scale: number; area: number } => {
+    const cols = o.fill ? Math.max(1, Math.floor(W / w)) : 1
+    const rows = o.fill ? Math.max(1, Math.floor(H / h)) : 1
+    const scale = Math.min(1, (W - 2 * m) / (cols * w), (H - 2 * m) / (rows * h))
+    return { cols, rows, scale, area: cols * rows * scale * scale * w * h }
+  }
+  const upright = plan(o.natW, o.natH)
+  const sideways = plan(o.natH, o.natW)
+  const turned = sideways.area > upright.area * 1.05
+  const p = turned ? sideways : upright
+
+  const cw = (turned ? o.natH : o.natW) * p.scale // one copy's width on the paper
+  const ch = (turned ? o.natW : o.natH) * p.scale
+  const x0 = (W - p.cols * cw) / 2
+  const y0 = (H - p.rows * ch) / 2
+
+  for (let r = 0; r < p.rows; r++) {
+    for (let c = 0; c < p.cols; c++) {
+      const x = x0 + c * cw
+      const y = y0 + r * ch
+      if (!turned) {
+        ctx.drawImage(o.strip, x, y, cw, ch)
+      } else {
+        // A quarter turn clockwise.
+        ctx.save()
+        ctx.translate(x + cw, y)
+        ctx.rotate(Math.PI / 2)
+        ctx.drawImage(o.strip, 0, 0, ch, cw)
+        ctx.restore()
+      }
     }
   }
-  return { canvas, copies: cols * rows, widthMm: paper.mmW, heightMm: paper.mmH }
+  return { canvas, copies: p.cols * p.rows, widthMm: paper.mmW, heightMm: paper.mmH }
 }
 
 // A test page for checking that the paper size and edges come out right.

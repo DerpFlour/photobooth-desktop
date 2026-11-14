@@ -80,6 +80,37 @@ declare global {
     ok: boolean
     message: string
   }
+
+  // Things the admin adds: layouts, imported frames, and on/off switches.
+  interface CustomLayout {
+    id: string // always starts with "custom-"
+    name: string
+    canvasW: number
+    canvasH: number
+    columns: number
+    rows: number
+    margin: number
+    gap: number
+    footer: number
+  }
+
+  interface CustomTemplate {
+    id: string // always starts with "frame-"
+    name: string
+    layoutId: string // the one layout this frame was made for
+    file: string // the stored picture
+    backgroundColor: string
+    slotColor: string
+    textColor: string
+  }
+
+  interface ContentFile {
+    customLayouts: CustomLayout[]
+    customTemplates: CustomTemplate[]
+    layoutEnabled: Record<string, boolean> // id -> on/off (missing = on)
+    templateEnabled: Record<string, boolean> // id -> on/off (missing = its default)
+  }
+
   interface PrinterEntry {
     name: string // the system name Windows uses
     displayName: string
@@ -164,6 +195,11 @@ declare global {
     printSheet(request: PrintRequest): Promise<PrintResult>
     readSessionFile(relativePath: string): Promise<ArrayBuffer>
     saveSheetFile(id: string, image: ArrayBuffer): Promise<void>
+    contentGet(): Promise<ContentFile>
+    contentSet(content: ContentFile): Promise<ContentFile>
+    contentPickPng(): Promise<{ name: string; bytes: ArrayBuffer } | null>
+    contentStoreFrame(bytes: ArrayBuffer): Promise<string>
+    contentSaveGuide(name: string, bytes: ArrayBuffer): Promise<string>
   }
 
   interface Window {

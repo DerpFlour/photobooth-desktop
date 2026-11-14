@@ -65,7 +65,7 @@ export function Review(): React.JSX.Element | null {
           <LayoutPreview
             layout={layout}
             template={template}
-            height={740}
+            height={Math.min(740, Math.floor(820 / (layout.canvas.width / layout.canvas.height)))}
             photos={photos.map((p) => p?.url ?? null)}
           />
         </div>

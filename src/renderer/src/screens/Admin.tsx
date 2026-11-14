@@ -10,6 +10,7 @@ import { getTemplateById } from '../config/templates'
 import { printSession, printTestPage, saveSheetFor } from '../render/printing'
 import { PAPERS } from '../render/sheet'
 import { THEMES } from '../theme'
+import { AdminContent } from './AdminContent'
 import { useNav } from '../state/nav'
 import { useSettings } from '../state/settings'
 
@@ -22,7 +23,7 @@ const fmt = (bytes: number): string =>
 let failedAttempts = 0
 let lockedUntil = 0
 
-type Tab = 'sessions' | 'storage' | 'settings'
+type Tab = 'sessions' | 'content' | 'storage' | 'settings'
 
 export function Admin({ initiallyUnlocked }: { initiallyUnlocked: boolean }): React.JSX.Element {
   const [unlocked, setUnlocked] = useState(initiallyUnlocked)
@@ -199,7 +200,7 @@ function AdminPanel(): React.JSX.Element {
       <div className="admin-head">
         <h1 className="admin-title">Admin</h1>
         <div className="admin-tabs tabs">
-          {(['sessions', 'storage', 'settings'] as Tab[]).map((t) => (
+          {(['sessions', 'content', 'storage', 'settings'] as Tab[]).map((t) => (
             <button
               key={t}
               className={`tab ${tab === t ? 'active' : ''}`}
@@ -208,7 +209,7 @@ function AdminPanel(): React.JSX.Element {
                 setNotice('')
               }}
             >
-              {t === 'sessions' ? 'Sessions' : t === 'storage' ? 'Storage' : 'Settings'}
+              {t === 'sessions' ? 'Sessions' : t === 'content' ? 'Content' : t === 'storage' ? 'Storage' : 'Settings'}
             </button>
           ))}
         </div>
@@ -260,6 +261,9 @@ function AdminPanel(): React.JSX.Element {
           </div>
         )}
 
+        {/* ------------- CONTENT (layouts and frames) ------------- */}
+        {tab === 'content' && <AdminContent />}
+        
         {/* ------------- SETTINGS ------------- */}
         {tab === 'settings' && (
           <div>

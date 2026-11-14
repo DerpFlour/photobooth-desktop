@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { IdleWatcher } from './components/IdleWatcher'
 import { Stage } from './components/Stage'
+import { loadContent } from './state/content'
 import { NavProvider, useNav } from './state/nav'
 import { SessionProvider } from './state/session'
 import { SettingsProvider, useSettings } from './state/settings'
@@ -21,13 +22,26 @@ import { TemplateSelect } from './screens/TemplateSelect'
 // updates when the app is fully restarted. If they don't match, say so.
 const REQUIRED_API = [
   'cloudShare', 'cloudStatus', 'cloudTest', 'cloudQueue', 'cloudRetry',
-  'listPrinters', 'printSheet', 'readSessionFile', 'saveSheetFile'
+  'listPrinters', 'printSheet', 'readSessionFile', 'saveSheetFile',
+  'contentGet', 'contentSet', 'contentPickPng', 'contentStoreFrame', 'contentSaveGuide'
 ] as const
 
 function missingApi(): string[] {
   const api = window.api as unknown as Record<string, unknown> | undefined
   if (!api) return ['the connection to the booth program']
   return REQUIRED_API.filter((name) => typeof api[name] !== 'function')
+}
+
+// Loads the admin's layouts and frames before any screen needs them.
+function ContentGate({ children }: { children: ReactNode }): React.JSX.Element {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    loadContent()
+      .catch((e) => console.warn('[content] could not load, using the built-in layouts', e))
+      .finally(() => setReady(true))
+  }, [])
+  if (!ready) return <div className="center-msg">Starting booth…</div>
+  return <>{children}</>
 }
 
 function Router(): React.JSX.Element | null {
@@ -95,12 +109,14 @@ export default function App(): React.JSX.Element {
     <Stage>
       <ErrorBoundary>
         <SettingsProvider>
-          <NavProvider>
-            <SessionProvider>
-              <Router />
-              <IdleWatcher />
-            </SessionProvider>
-          </NavProvider>
+          <ContentGate>
+            <NavProvider>
+              <SessionProvider>
+                <Router />
+                <IdleWatcher />
+              </SessionProvider>
+            </NavProvider>
+          </ContentGate>
         </SettingsProvider>
       </ErrorBoundary>
     </Stage>

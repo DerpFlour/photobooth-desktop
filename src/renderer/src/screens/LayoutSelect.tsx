@@ -7,24 +7,26 @@ import { useSession } from '../state/session'
 export function LayoutSelect(): React.JSX.Element {
   const nav = useNav()
   const { layoutId, chooseLayout, resetSession } = useSession()
+  const layouts = getEnabledLayouts()
+
+  // The more layouts there are, the smaller each card, so they all fit.
+  const height = layouts.length <= 2 ? 560 : layouts.length === 3 ? 460 : layouts.length === 4 ? 380 : 300
 
   return (
     <div className="screen">
       <h1 className="page-title">Choose your layout</h1>
 
-      {/* Reads from config: adding a layout there adds a card here automatically */}
+      {/* Reads from config: adding a layout in the admin adds a card here automatically */}
       <div className="cards">
-        {getEnabledLayouts().map((l) => (
+        {layouts.map((l) => (
           <button
             key={l.id}
             className={`card ${l.id === layoutId ? 'selected' : ''}`}
             onClick={() => chooseLayout(l.id)}
           >
-            <LayoutPreview layout={l} height={560} />
+            <LayoutPreview layout={l} height={Math.min(height, Math.floor(640 / (l.canvas.width / l.canvas.height)))} />
             <h3>{l.name}</h3>
-            <p>
-              {l.photoCount} photos · {l.description}
-            </p>
+            <p>{l.photoCount} photos</p>
           </button>
         ))}
       </div>

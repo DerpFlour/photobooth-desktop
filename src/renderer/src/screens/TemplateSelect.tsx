@@ -23,7 +23,7 @@ export function TemplateSelect(): React.JSX.Element | null {
     <div className="screen">
       <div className="tpl-body">
         <div className="tpl-preview">
-          <LayoutPreview layout={layout} template={selected} height={780} />
+          <LayoutPreview layout={layout} template={selected} height={Math.min(780, Math.floor(720 / (layout.canvas.width / layout.canvas.height)))} />
           <div className="name">{selected ? selected.name : 'Pick a frame →'}</div>
         </div>
         <div className="tpl-list">

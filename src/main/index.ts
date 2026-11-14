@@ -13,6 +13,7 @@ import {
   startCloudQueue,
   testConnection
 } from './cloud'
+import { getContent, loadContent, pickPng, saveGuide, setContent, storeFrame } from './content'
 import { listPrinters, printSheet } from './print'
 import { getSettings, loadSettings, updateSettings } from './settings'
 import {
@@ -147,6 +148,7 @@ if (!app.requestSingleInstanceLock()) {
     Menu.setApplicationMenu(null) // no menu bar, and no menu shortcuts like Ctrl+R
     loadSettings()
     loadSessions()
+    loadContent()
     try {
       reconcileStorage()
     } catch (e) {
@@ -218,6 +220,11 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('cloud:queue', () => queueSummary())
     ipcMain.handle('cloud:retry', () => retryNow())
     ipcMain.handle('print:list', () => listPrinters(win))
+    ipcMain.handle('content:get', () => getContent())
+    ipcMain.handle('content:set', (_e, content: ContentFile) => setContent(content))
+    ipcMain.handle('content:pickPng', () => pickPng(win))
+    ipcMain.handle('content:storeFrame', (_e, bytes: ArrayBuffer) => storeFrame(bytes))
+    ipcMain.handle('content:saveGuide', (_e, name: string, bytes: ArrayBuffer) => saveGuide(name, bytes))
     ipcMain.handle('print:sheet', (_e, request: PrintRequest) => printSheet(request, win))
     // Lets the screens read a saved picture (used to build print sheets).
     ipcMain.handle('sessions:readFile', (_e, relativePath: string) => {

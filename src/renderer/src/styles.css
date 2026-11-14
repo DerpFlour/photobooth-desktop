@@ -433,3 +433,19 @@ input { user-select: text; -webkit-user-select: text; }
 .gal-card img { height: 420px; border-radius: 12px; display: block; }
 .gal-card span { font-size: 22px; color: var(--muted); }
 .gal-empty { text-align: center; font-size: 38px; color: var(--muted); margin-top: 220px; }
+
+/* ================= Phase 9B: layouts and frames manager ================= */
+.admin-tabs { width: 960px; }
+
+/* The layout cards wrap onto more rows when there are many layouts. */
+.cards { flex-wrap: wrap; align-content: center; gap: 36px 50px; padding: 20px 90px; overflow-y: auto; }
+
+.cm-thumb { width: 150px; flex-shrink: 0; display: flex; justify-content: center; }
+.cm-split { display: flex; gap: 50px; align-items: flex-start; }
+.cm-form { flex: 1; min-width: 0; }
+.cm-preview { width: 560px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; position: sticky; top: 0; }
+.cm-chips { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.cm-check { font-size: 26px; font-weight: 700; line-height: 1.4; margin: 12px 0; }
+.cm-check.ok { color: #2f855a; }
+.cm-check.bad { color: #c53030; }
+.chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
